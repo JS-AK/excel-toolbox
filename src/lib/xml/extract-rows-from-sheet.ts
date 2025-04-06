@@ -1,4 +1,4 @@
-import { extractXmlFromSheet } from './extract-xml-from-sheet.js';
+import { extractXmlFromSheet } from "./extract-xml-from-sheet.js";
 
 /**
  * Parses a worksheet (either as Buffer or string) to extract row data,
@@ -26,15 +26,15 @@ export function extractRowsFromSheet(sheet: Buffer | string): {
 	mergeCells: { ref: string }[];
 } {
 	// Convert Buffer input to XML string if needed
-	const xml = typeof sheet === 'string' ? sheet : extractXmlFromSheet(sheet);
+	const xml = typeof sheet === "string" ? sheet : extractXmlFromSheet(sheet);
 
 	// Extract the sheetData section containing all rows
 	const sheetDataMatch = xml.match(/<sheetData[^>]*>([\s\S]*?)<\/sheetData>/);
 	if (!sheetDataMatch) {
-		throw new Error('sheetData not found in worksheet XML');
+		throw new Error("sheetData not found in worksheet XML");
 	}
 
-	const sheetDataContent = sheetDataMatch[1] || '';
+	const sheetDataContent = sheetDataMatch[1] || "";
 
 	// Extract all <row> elements using regex
 	const rowMatches = [...sheetDataContent.matchAll(/<row[\s\S]*?<\/row>/g)];
@@ -67,8 +67,8 @@ export function extractRowsFromSheet(sheet: Buffer | string): {
 	}
 
 	return {
-		rows,
 		lastRowNumber,
 		mergeCells,
+		rows,
 	};
 }

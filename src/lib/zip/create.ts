@@ -1,13 +1,13 @@
-import { Buffer } from 'node:buffer';
-import { deflateRawSync } from 'node:zlib';
+import { Buffer } from "node:buffer";
+import { deflateRawSync } from "node:zlib";
 
-import { toBytes, dosTime, crc32 } from './utils.js';
+import { crc32, dosTime, toBytes } from "./utils.js";
 
 import {
-	LOCAL_FILE_HEADER_SIG,
 	CENTRAL_DIR_HEADER_SIG,
 	END_OF_CENTRAL_DIR_SIG,
-} from './constants.js';
+	LOCAL_FILE_HEADER_SIG,
+} from "./constants.js";
 
 /**
  * Creates a ZIP archive from a collection of files.
@@ -21,12 +21,12 @@ export function create(files: { [path: string]: Buffer | string }): Buffer {
 	let offset = 0;
 
 	for (const [filename, rawContent] of Object.entries(files).sort(([a], [b]) => a.localeCompare(b))) {
-		if (filename.includes('..')) {
+		if (filename.includes("..")) {
 			throw new Error(`Invalid filename: ${filename}`);
 		}
 
 		const content = Buffer.isBuffer(rawContent) ? rawContent : Buffer.from(rawContent);
-		const fileNameBuf = Buffer.from(filename, 'utf8');
+		const fileNameBuf = Buffer.from(filename, "utf8");
 		const modTime = dosTime(new Date());
 
 		const crc = crc32(content);
