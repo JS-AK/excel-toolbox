@@ -1,4 +1,4 @@
-import { inflateRawSync } from 'node:zlib';
+import { inflateRawSync } from "node:zlib";
 
 /**
  * Parses a ZIP archive from a buffer and extracts the files within.
@@ -8,8 +8,8 @@ import { inflateRawSync } from 'node:zlib';
  * @throws {Error} - Throws an error if an unsupported compression method is encountered or if decompression fails.
  */
 
-export function read(buffer: Buffer): { [s: string]: string; } {
-	const files: { [s: string]: string; } = {};
+export function read(buffer: Buffer): { [s: string]: string } {
+	const files: { [s: string]: string } = {};
 	let offset = 0;
 
 	while (offset + 4 <= buffer.length) {
@@ -34,7 +34,7 @@ export function read(buffer: Buffer): { [s: string]: string; } {
 		}
 
 		const compressedData = buffer.subarray(dataStart, nextOffset);
-		let content = '';
+		let content = "";
 
 		try {
 			if (compressionMethod === 0) {
@@ -45,7 +45,7 @@ export function read(buffer: Buffer): { [s: string]: string; } {
 				throw new Error(`Unsupported compression method ${compressionMethod}`);
 			}
 		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Unknown error';
+			const message = error instanceof Error ? error.message : "Unknown error";
 
 			throw new Error(`Error unpacking file ${fileName}: ${message}`);
 		}

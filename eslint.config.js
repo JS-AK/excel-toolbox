@@ -2,8 +2,10 @@
 import { defineConfig } from "eslint/config";
 import globals from "globals";
 import tseslint from "typescript-eslint";
+
 import sortDestructureKeys from "eslint-plugin-sort-destructure-keys";
 import sortExports from "eslint-plugin-sort-exports";
+import stylisticTs from "@stylistic/eslint-plugin-ts";
 
 export default defineConfig([
 	...tseslint.configs.recommended,
@@ -14,15 +16,26 @@ export default defineConfig([
 			globals: globals.node,
 		},
 		plugins: {
-			"sort-destructure-keys": sortDestructureKeys,
-			"sort-exports": sortExports,
+			"@sort-destructure-keys": sortDestructureKeys,
+			"@sort-exports": sortExports,
+			"@stylistic/ts": stylisticTs,
 		},
 		rules: {
-			semi: ["error", "always"],
+			"@sort-destructure-keys/sort-destructure-keys": ["error", { caseSensitive: true }],
+			"@sort-exports/sort-exports": ["error", { sortDir: "asc", sortExportKindFirst: "type" }],
+			"@stylistic/ts/member-delimiter-style": "error",
 			"comma-dangle": ["error", "always-multiline"],
-			"sort-destructure-keys/sort-destructure-keys": ["error", { caseSensitive: true }],
-			"sort-exports/sort-exports": ["error", { sortDir: "asc", sortExportKindFirst: "type" }],
 			"no-multiple-empty-lines": ["error", { max: 1, maxEOF: 0 }],
+			"quotes": ["error", "double"],
+			semi: ["error", "always"],
+			"sort-imports": ["error", {
+				"allowSeparatedGroups": true,
+				"ignoreCase": false,
+				"ignoreDeclarationSort": false,
+				"ignoreMemberSort": false,
+				"memberSyntaxSortOrder": ["none", "all", "multiple", "single"],
+			}],
+			"sort-keys": ["error", "asc", { allowLineSeparatedGroups: true }],
 		},
 	},
 ]);

@@ -23,7 +23,7 @@ export function buildMergedSheet(
 	// - Closing </sheetData> tag
 	let xmlData = originalXml.replace(
 		/<sheetData[^>]*>[\s\S]*?<\/sheetData>/,
-		`<sheetData>\n${mergedRows.join('\n')}\n</sheetData>`,
+		`<sheetData>\n${mergedRows.join("\n")}\n</sheetData>`,
 	);
 
 	// If merge cells were specified, add them after the sheetData section
@@ -31,10 +31,10 @@ export function buildMergedSheet(
 		// Create mergeCells XML section:
 		// - Includes count attribute with total number of merges
 		// - Contains one mergeCell element for each merge definition
-		const mergeCellsXml = `<mergeCells count="${mergeCells.length}">${mergeCells.map(mc => `<mergeCell ref="${mc.ref}"/>`).join('')}</mergeCells>`;
+		const mergeCellsXml = `<mergeCells count="${mergeCells.length}">${mergeCells.map(mc => `<mergeCell ref="${mc.ref}"/>`).join("")}</mergeCells>`;
 
 		// Insert the mergeCells section immediately after the sheetData closing tag
-		xmlData = xmlData.replace('</sheetData>', `</sheetData>${mergeCellsXml}`);
+		xmlData = xmlData.replace("</sheetData>", `</sheetData>${mergeCellsXml}`);
 	}
 
 	// Return the fully reconstructed XML
