@@ -236,16 +236,12 @@ function removeSheetByName(files: Record<string, string>, sheetName: string): vo
 	const relsXml = files["xl/_rels/workbook.xml.rels"];
 
 	if (!workbookXml || !relsXml) {
-		console.warn("Workbook.xml or workbook.xml.rels not found");
-
 		return;
 	}
 
 	const sheetMatch = workbookXml.match(new RegExp(`<sheet[^>]+name=["']${sheetName}["'][^>]*/>`));
 
 	if (!sheetMatch) {
-		console.warn(`1 Sheet ${sheetName} not found`);
-
 		return;
 	}
 
@@ -254,8 +250,6 @@ function removeSheetByName(files: Record<string, string>, sheetName: string): vo
 	const ridMatch = sheetTag.match(/r:id=["'](rId\d+)["']/);
 
 	if (!sheetIdMatch || !ridMatch) {
-		console.warn(`2 Sheet ${sheetName} not found`);
-
 		return;
 	}
 
@@ -264,8 +258,6 @@ function removeSheetByName(files: Record<string, string>, sheetName: string): vo
 	const relMatch = relsXml.match(new RegExp(`<Relationship[^>]+Id=["']${relId}["'][^>]+Target=["']([^"']+)["'][^>]*/>`));
 
 	if (!relMatch) {
-		console.warn(`3 Sheet ${sheetName} not found`);
-
 		return;
 	}
 
@@ -273,8 +265,6 @@ function removeSheetByName(files: Record<string, string>, sheetName: string): vo
 	const targetMatch = relTag.match(/Target=["']([^"']+)["']/);
 
 	if (!targetMatch) {
-		console.warn(`4 Sheet ${sheetName} not found`);
-
 		return;
 	}
 

@@ -28,18 +28,13 @@ export function extractXmlFromSheet(buffer: Buffer): string {
 		xml = buffer.toString("utf8");
 	} else {
 		// Case 2: Attempt to decompress as raw deflate data
-		try {
-			const inflated = inflateRaw(buffer, { to: "string" });
+		const inflated = inflateRaw(buffer, { to: "string" });
 
-			// Validate the decompressed content contains worksheet data
-			if (inflated && inflated.includes("<sheetData")) {
-				xml = inflated;
-			} else {
-				throw new Error("Decompressed data does not contain sheetData");
-			}
-		} catch (e) {
-			console.error("Decompression failed:", e);
-			// Continue to fallback attempt
+		// Validate the decompressed content contains worksheet data
+		if (inflated && inflated.includes("<sheetData")) {
+			xml = inflated;
+		} else {
+			throw new Error("Decompressed data does not contain sheetData");
 		}
 	}
 
