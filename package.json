@@ -1,7 +1,7 @@
 {
-  "name": "@js-ak/example-automatic-deploy-ts-app-to-npm-with-scope",
-  "version": "1.6.1",
-  "description": "example-automatic-deploy-ts-app-to-npm-with-scope",
+  "name": "@js-ak/excel-toolbox",
+  "version": "0.0.1",
+  "description": "excel-toolbox",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
@@ -13,28 +13,28 @@
     "build/lib",
     "build/index.js",
     "build/index.d.ts",
-    "build/index.d.ts.map",
     "LICENSE",
     "README.md",
     "package.json"
   ],
   "scripts": {
     "build": "tsc",
+    "lint": "eslint . --ext .ts",
     "test": "npm run build && node ./build/test/index.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/JS-AK/example-automatic-deploy-ts-app-to-npm-with-scope.git"
+    "url": "git+https://github.com/JS-AK/excel-toolbox.git"
   },
   "keywords": [
-    "example-automatic-deploy-ts-app-to-npm-with-scope"
+    "excel-toolbox"
   ],
   "author": "JS-AK",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/JS-AK/example-automatic-deploy-ts-app-to-npm-with-scope/issues"
+    "url": "https://github.com/JS-AK/excel-toolbox/issues"
   },
-  "homepage": "https://github.com/JS-AK/example-automatic-deploy-ts-app-to-npm-with-scope#readme",
+  "homepage": "https://github.com/JS-AK/excel-toolbox#readme",
   "devDependencies": {
     "@semantic-release/changelog": "6.0.3",
     "@semantic-release/commit-analyzer": "13.0.0",
@@ -42,8 +42,17 @@
     "@semantic-release/github": "10.0.6",
     "@semantic-release/npm": "12.0.1",
     "@semantic-release/release-notes-generator": "14.0.0",
-    "@types/node": "20.14.3",
+    "@types/node": "22.14.0",
+    "@types/pako": "2.0.3",
+    "eslint": "9.24.0",
+    "eslint-plugin-sort-destructure-keys": "2.0.0",
+    "eslint-plugin-sort-exports": "0.9.1",
+    "globals": "16.0.0",
     "semantic-release": "24.0.0",
-    "typescript": "5.4.5"
+    "typescript": "5.4.5",
+    "typescript-eslint": "8.29.0"
+  },
+  "dependencies": {
+    "pako": "2.1.0"
   }
 }

@@ -1,1 +1,1 @@
-export const isTest = (str: string) => str === 'TEST'
+export * from './merge-sheets-to-base-file.js';

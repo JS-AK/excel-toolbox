@@ -31,7 +31,7 @@ function getPlugins() {
 module.exports = {
 	branches: [
 		'master',
-		{ name: 'dev', prerelease: true, },
+		{ name: 'dev', prerelease: true },
 	],
 	plugins: getPlugins(),
-}
+};
