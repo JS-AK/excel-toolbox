@@ -1,3 +1,15 @@
+# [1.1.0](https://github.com/JS-AK/excel-toolbox/compare/v1.0.0...v1.1.0) (2025-04-06)
+
+
+### Bug Fixes
+
+* removed console ([57b413c](https://github.com/JS-AK/excel-toolbox/commit/57b413c318152322683f1f56c59cab4bfcbe81a1))
+
+
+### Features
+
+* updated mergeSheetsToBaseFile options ([7b9f634](https://github.com/JS-AK/excel-toolbox/commit/7b9f634920471a1f295f8d310dc560369945b496))
+
 # 1.0.0 (2025-04-06)
 
 
