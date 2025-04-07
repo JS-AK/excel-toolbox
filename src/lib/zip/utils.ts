@@ -1,4 +1,4 @@
-import { Buffer } from "buffer";
+import { Buffer } from "node:buffer";
 
 /**
  * Precomputed CRC-32 lookup table for optimized checksum calculation.

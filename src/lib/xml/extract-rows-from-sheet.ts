@@ -37,7 +37,7 @@ export function extractRowsFromSheet(sheet: Buffer | string): {
 	const sheetDataContent = sheetDataMatch[1] || "";
 
 	// Extract all <row> elements using regex
-	const rowMatches = [...sheetDataContent.matchAll(/<row[\s\S]*?<\/row>/g)];
+	const rowMatches = [...sheetDataContent.matchAll(/<row\b[^>]*\/>|<row\b[^>]*>[\s\S]*?<\/row>/g)];
 	const rows = rowMatches.map(match => match[0]);
 
 	// Calculate the highest row number present in the sheet

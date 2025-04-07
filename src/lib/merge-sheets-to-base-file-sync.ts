@@ -16,16 +16,16 @@ import { mergeSheetsToBaseFileProcess } from "./merge-sheets-to-base-file-proces
  * @param {number} [data.gap=0] - The number of empty rows to insert between each added section
  * @param {string[]} [data.sheetNamesToRemove=[]] - The names of sheets to remove from the output file
  * @param {number[]} [data.sheetsToRemove=[]] - The 1-based indices of sheets to remove from the output file
- * @returns {Promise<Buffer>} - The merged Excel file
+ * @returns {Buffer} - The merged Excel file
  */
-export async function mergeSheetsToBaseFile(data: {
+export function mergeSheetsToBaseFileSync(data: {
 	additions: { file: Buffer; isBaseFile?: boolean; sheetIndexes: number[] }[];
 	baseFile: Buffer;
 	baseSheetIndex?: number;
 	gap?: number;
 	sheetNamesToRemove?: string[];
 	sheetsToRemove?: number[];
-}): Promise<Buffer> {
+}): Buffer {
 	const {
 		additions = [],
 		baseFile,
@@ -34,14 +34,14 @@ export async function mergeSheetsToBaseFile(data: {
 		sheetNamesToRemove = [],
 		sheetsToRemove = [],
 	} = data;
-	const baseFiles = await Zip.read(baseFile);
+	const baseFiles = Zip.readSync(baseFile);
 
 	const additionsUpdated: { files: Record<string, string>; sheetIndexes: number[] }[] = [];
 
 	for (const { file, isBaseFile, sheetIndexes } of additions) {
 		const files = (isBaseFile || Utils.isSameBuffer(file, baseFile))
 			? baseFiles
-			: await Zip.read(file);
+			: Zip.readSync(file);
 
 		additionsUpdated.push({
 			files,
@@ -58,5 +58,5 @@ export async function mergeSheetsToBaseFile(data: {
 		sheetsToRemove,
 	});
 
-	return Zip.create(baseFiles);
+	return Zip.createSync(baseFiles);
 }

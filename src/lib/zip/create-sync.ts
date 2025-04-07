@@ -1,8 +1,5 @@
 import { Buffer } from "node:buffer";
-import util from "node:util";
-import zlib from "node:zlib";
-
-const deflateRaw = util.promisify(zlib.deflateRaw);
+import { deflateRawSync } from "node:zlib";
 
 import { crc32, dosTime, toBytes } from "./utils.js";
 
@@ -18,9 +15,10 @@ import {
  * @param {Object.<string, Buffer|string>} files - An object with file paths as keys and either Buffer or string content as values.
  * @returns {Buffer} - The ZIP archive as a Buffer.
  */
-export async function create(files: { [path: string]: Buffer | string }): Promise<Buffer> {
+export function createSync(files: { [path: string]: Buffer | string }): Buffer {
 	const fileEntries: Buffer[] = [];
 	const centralDirectory: Buffer[] = [];
+
 	let offset = 0;
 
 	for (const [filename, rawContent] of Object.entries(files).sort(([a], [b]) => a.localeCompare(b))) {
@@ -33,7 +31,7 @@ export async function create(files: { [path: string]: Buffer | string }): Promis
 		const modTime = dosTime(new Date());
 
 		const crc = crc32(content);
-		const compressed = await deflateRaw(content);
+		const compressed = deflateRawSync(content);
 		const compSize = compressed.length;
 		const uncompSize = content.length;
 

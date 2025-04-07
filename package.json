@@ -7,20 +7,27 @@
     "registry": "https://registry.npmjs.org/"
   },
   "type": "module",
-  "main": "build/index.js",
-  "types": "build/index.d.ts",
+  "main": "build/cjs/index.js",
+  "module": "build/esm/index.js",
+  "types": "build/types/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./build/cjs/index.js",
+      "import": "./build/esm/index.js"
+    }
+  },
   "files": [
-    "build/lib",
-    "build/index.js",
-    "build/index.d.ts",
+    "build/",
     "LICENSE",
     "README.md",
     "package.json"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "npm run build:esm && npm run build:cjs",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
     "lint": "eslint . --ext .ts",
-    "test": "npm run build && node ./build/test/index.js"
+    "test": "npm run build && node ./build/esm/test/index.js"
   },
   "repository": {
     "type": "git",
