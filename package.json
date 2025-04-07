@@ -20,7 +20,8 @@
     },
     "./esm": {
       "import": "./build/esm/index.js"
-    }
+    },
+    "./index.d.ts": "./build/types/index.d.ts"
   },
   "files": [
     "build/esm/lib",
