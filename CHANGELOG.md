@@ -1,3 +1,10 @@
+## [1.2.5](https://github.com/JS-AK/excel-toolbox/compare/v1.2.4...v1.2.5) (2025-04-07)
+
+
+### Bug Fixes
+
+* updated package.json ([e26d830](https://github.com/JS-AK/excel-toolbox/commit/e26d83001b20c61bc464ceb73b401e32bcb30f9d))
+
 ## [1.2.4](https://github.com/JS-AK/excel-toolbox/compare/v1.2.3...v1.2.4) (2025-04-07)
 
 
