@@ -6,13 +6,12 @@
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
-  "type": "module",
+  "type": "commonjs",
   "main": "build/cjs/index.js",
   "module": "build/esm/index.js",
   "types": "build/types/index.d.ts",
   "exports": {
     ".": {
-      "default": "./build/esm/index.js",
       "require": "./build/cjs/index.js",
       "import": "./build/esm/index.js",
       "types": "./build/types/index.d.ts"
@@ -21,6 +20,7 @@
   "files": [
     "build/esm/lib",
     "build/esm/index.js",
+    "build/esm/package.json",
     "build/cjs/lib",
     "build/cjs/index.js",
     "build/types/lib",
@@ -30,11 +30,13 @@
     "package.json"
   ],
   "scripts": {
-    "build": "npm run build:esm && npm run build:cjs",
-    "build:esm": "tsc -p tsconfig.esm.json",
+    "build": "npm run build:cjs && npm run build:esm && npm run build:types && npm run postbuild:esm",
     "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:types": "tsc -p tsconfig.types.json",
     "lint": "eslint . --ext .ts",
-    "test": "npm run build && node ./build/esm/test/index.js"
+    "postbuild:esm": "node scripts/write-esm-package.js",
+    "test": "node build/cjs/test/index.js"
   },
   "repository": {
     "type": "git",
