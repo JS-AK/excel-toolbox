@@ -25,6 +25,7 @@ export default defineConfig([
 			"@sort-exports/sort-exports": ["error", { sortDir: "asc", sortExportKindFirst: "type" }],
 			"@stylistic/ts/member-delimiter-style": "error",
 			"comma-dangle": ["error", "always-multiline"],
+			"no-console": "error",
 			"no-multiple-empty-lines": ["error", { max: 1, maxEOF: 0 }],
 			"quotes": ["error", "double"],
 			semi: ["error", "always"],

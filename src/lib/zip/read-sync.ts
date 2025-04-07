@@ -1,7 +1,4 @@
-import util from "node:util";
-import zlib from "node:zlib";
-
-const inflateRaw = util.promisify(zlib.inflateRaw);
+import { inflateRawSync } from "node:zlib";
 
 /**
  * Parses a ZIP archive from a buffer and extracts the files within.
@@ -11,7 +8,7 @@ const inflateRaw = util.promisify(zlib.inflateRaw);
  * @throws {Error} - Throws an error if an unsupported compression method is encountered or if decompression fails.
  */
 
-export async function read(buffer: Buffer): Promise<Record<string, string>> {
+export function readSync(buffer: Buffer): Record<string, string> {
 	const files: Record<string, string> = {};
 	let offset = 0;
 
@@ -43,7 +40,7 @@ export async function read(buffer: Buffer): Promise<Record<string, string>> {
 			if (compressionMethod === 0) {
 				content = compressedData.toString();
 			} else if (compressionMethod === 8) {
-				content = (await inflateRaw(new Uint8Array(compressedData))).toString();
+				content = inflateRawSync(new Uint8Array(compressedData)).toString();
 			} else {
 				throw new Error(`Unsupported compression method ${compressionMethod}`);
 			}
