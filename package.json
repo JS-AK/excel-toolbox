@@ -12,10 +12,14 @@
   "types": "build/types/index.d.ts",
   "exports": {
     ".": {
-      "default": "./build/esm/index.js",
       "require": "./build/cjs/index.js",
-      "import": "./build/esm/index.js",
-      "types": "./build/types/index.d.ts"
+      "import": "./build/esm/index.js"
+    },
+    "./cjs": {
+      "require": "./build/cjs/index.js"
+    },
+    "./esm": {
+      "import": "./build/esm/index.js"
     }
   },
   "files": [
