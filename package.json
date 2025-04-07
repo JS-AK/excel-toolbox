@@ -13,15 +13,15 @@
   "exports": {
     ".": {
       "require": "./build/cjs/index.js",
-      "import": "./build/esm/index.js"
+      "import": "./build/esm/index.js",
+      "types": "./build/types/index.d.ts"
     },
     "./cjs": {
       "require": "./build/cjs/index.js"
     },
     "./esm": {
       "import": "./build/esm/index.js"
-    },
-    "./index.d.ts": "./build/types/index.d.ts"
+    }
   },
   "files": [
     "build/esm/lib",
