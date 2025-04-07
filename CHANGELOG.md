@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/JS-AK/excel-toolbox/compare/v1.1.0...v1.2.0) (2025-04-07)
+
+
+### Features
+
+* added merge-sheets-to-base-file-async ([d4ea938](https://github.com/JS-AK/excel-toolbox/commit/d4ea93826950bc9b10080ad7fcf8441ceef46aed))
+
 # [1.1.0](https://github.com/JS-AK/excel-toolbox/compare/v1.0.0...v1.1.0) (2025-04-06)
 
 
