@@ -12,9 +12,10 @@
   "types": "build/types/index.d.ts",
   "exports": {
     ".": {
+      "types": "./build/types/index.d.ts",
       "require": "./build/cjs/index.js",
       "import": "./build/esm/index.js",
-      "types": "./build/types/index.d.ts"
+      "default": "./build/esm/index.js"
     },
     "./cjs": {
       "require": "./build/cjs/index.js"
@@ -26,8 +27,10 @@
   "files": [
     "build/esm/lib",
     "build/esm/index.js",
+    "build/esm/package.json",
     "build/cjs/lib",
     "build/cjs/index.js",
+    "build/cjs/package.json",
     "build/types/lib",
     "build/types/index.d.ts",
     "LICENSE",
@@ -35,10 +38,12 @@
     "package.json"
   ],
   "scripts": {
-    "build": "npm run build:esm && npm run build:cjs",
+    "build": "npm run build:cjs && npm run build:esm && npm run postbuild:esm && npm run postbuild:cjs",
     "build:esm": "tsc -p tsconfig.esm.json",
     "build:cjs": "tsc -p tsconfig.cjs.json",
     "lint": "eslint . --ext .ts",
+    "postbuild:esm": "node scripts/write-esm-package.js",
+    "postbuild:cjs": "node scripts/write-cjs-package.js",
     "test": "npm run build && node ./build/esm/test/index.js"
   },
   "repository": {
@@ -69,7 +74,7 @@
     "eslint-plugin-sort-exports": "0.9.1",
     "globals": "16.0.0",
     "semantic-release": "24.0.0",
-    "typescript": "5.4.5",
+    "typescript": "5.8.3",
     "typescript-eslint": "8.29.0"
   },
   "dependencies": {
