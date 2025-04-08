@@ -18,8 +18,8 @@ import * as Xml from "./xml/index.js";
  * The function returns a dictionary of file paths to their corresponding XML content.
  */
 export function mergeSheetsToBaseFileProcess(data: {
-	additions: { files: Record<string, string>; sheetIndexes: number[] }[];
-	baseFiles: Record<string, string>;
+	additions: { files: Record<string, Buffer>; sheetIndexes: number[] }[];
+	baseFiles: Record<string, Buffer>;
 	baseSheetIndex: number;
 	gap: number;
 	sheetNamesToRemove: string[];
@@ -44,7 +44,8 @@ export function mergeSheetsToBaseFileProcess(data: {
 		lastRowNumber,
 		mergeCells: baseMergeCells,
 		rows: baseRows,
-	} = Xml.extractRowsFromSheet(baseFiles[basePath] as string);
+		xml,
+	} = Xml.extractRowsFromSheet(baseFiles[basePath]);
 
 	const allRows = [...baseRows];
 	const allMergeCells = [...baseMergeCells];
@@ -58,7 +59,7 @@ export function mergeSheetsToBaseFileProcess(data: {
 				throw new Error(`File does not contain ${sheetPath}`);
 			}
 
-			const { mergeCells, rows } = Xml.extractRowsFromSheet(files[sheetPath] as string);
+			const { mergeCells, rows } = Xml.extractRowsFromSheet(files[sheetPath]);
 
 			const shiftedRows = Xml.shiftRowIndices(rows, currentRowOffset);
 
@@ -82,7 +83,7 @@ export function mergeSheetsToBaseFileProcess(data: {
 	}
 
 	const mergedXml = Xml.buildMergedSheet(
-		baseFiles[basePath] as string,
+		xml,
 		allRows,
 		allMergeCells,
 	);
@@ -94,24 +95,24 @@ export function mergeSheetsToBaseFileProcess(data: {
 		delete baseFiles[sheetPath];
 
 		if (baseFiles["xl/workbook.xml"]) {
-			baseFiles["xl/workbook.xml"] = Utils.removeSheetFromWorkbook(
-				baseFiles["xl/workbook.xml"],
+			baseFiles["xl/workbook.xml"] = Buffer.from(Utils.removeSheetFromWorkbook(
+				baseFiles["xl/workbook.xml"].toString(),
 				sheetIndex,
-			);
+			));
 		}
 
 		if (baseFiles["xl/_rels/workbook.xml.rels"]) {
-			baseFiles["xl/_rels/workbook.xml.rels"] = Utils.removeSheetFromRels(
-				baseFiles["xl/_rels/workbook.xml.rels"],
+			baseFiles["xl/_rels/workbook.xml.rels"] = Buffer.from(Utils.removeSheetFromRels(
+				baseFiles["xl/_rels/workbook.xml.rels"].toString(),
 				sheetIndex,
-			);
+			));
 		}
 
 		if (baseFiles["[Content_Types].xml"]) {
-			baseFiles["[Content_Types].xml"] = Utils.removeSheetFromContentTypes(
-				baseFiles["[Content_Types].xml"],
+			baseFiles["[Content_Types].xml"] = Buffer.from(Utils.removeSheetFromContentTypes(
+				baseFiles["[Content_Types].xml"].toString(),
 				sheetIndex,
-			);
+			));
 		}
 	}
 

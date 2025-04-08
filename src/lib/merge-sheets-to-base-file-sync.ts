@@ -36,7 +36,7 @@ export function mergeSheetsToBaseFileSync(data: {
 	} = data;
 	const baseFiles = Zip.readSync(baseFile);
 
-	const additionsUpdated: { files: Record<string, string>; sheetIndexes: number[] }[] = [];
+	const additionsUpdated: { files: Record<string, Buffer>; sheetIndexes: number[] }[] = [];
 
 	for (const { file, isBaseFile, sheetIndexes } of additions) {
 		const files = (isBaseFile || Utils.isSameBuffer(file, baseFile))

@@ -24,6 +24,7 @@ export function extractRowsFromSheet(sheet: Buffer | string): {
 	rows: string[];
 	lastRowNumber: number;
 	mergeCells: { ref: string }[];
+	xml: string;
 } {
 	// Convert Buffer input to XML string if needed
 	const xml = typeof sheet === "string" ? sheet : extractXmlFromSheet(sheet);
@@ -70,5 +71,6 @@ export function extractRowsFromSheet(sheet: Buffer | string): {
 		lastRowNumber,
 		mergeCells,
 		rows,
+		xml,
 	};
 }

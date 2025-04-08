@@ -9,13 +9,13 @@
  * @param {string[]} mergedRows - Array of XML strings representing each row in the merged sheet.
  * @param {Object[]} [mergeCells] - Optional array of merge cell definitions.
  *        Each object should have a 'ref' property specifying the merge range (e.g., "A1:B2").
- * @returns {string} - The reconstructed XML string with merged content.
+ * @returns {Buffer} - The reconstructed XML string with merged content.
  */
 export function buildMergedSheet(
 	originalXml: string,
 	mergedRows: string[],
 	mergeCells: { ref: string }[] = [],
-): string {
+): Buffer {
 	// Remove any existing <mergeCells> section from the XML
 	let xmlData = originalXml.replace(/<mergeCells[^>]*>[\s\S]*?<\/mergeCells>/g, "");
 
@@ -36,5 +36,5 @@ export function buildMergedSheet(
 		);
 	}
 
-	return xmlData;
+	return Buffer.from(xmlData);
 }
