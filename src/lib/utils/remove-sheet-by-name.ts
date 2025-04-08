@@ -4,9 +4,9 @@
  * @param {string} sheetName - The name of the sheet to remove.
  * @returns {void}
  */
-export function removeSheetByName(files: Record<string, string>, sheetName: string): void {
-	const workbookXml = files["xl/workbook.xml"];
-	const relsXml = files["xl/_rels/workbook.xml.rels"];
+export function removeSheetByName(files: Record<string, Buffer>, sheetName: string): void {
+	const workbookXml = files["xl/workbook.xml"]?.toString();
+	const relsXml = files["xl/_rels/workbook.xml.rels"]?.toString();
 
 	if (!workbookXml || !relsXml) {
 		return;
@@ -43,17 +43,19 @@ export function removeSheetByName(files: Record<string, string>, sheetName: stri
 
 	const targetPath = `xl/${targetMatch[1]}`.replace(/\\/g, "/");
 
-	delete files[targetPath];
+	if (targetPath) {
+		delete files[targetPath];
+	}
 
-	files["xl/workbook.xml"] = workbookXml.replace(sheetTag, "");
-	files["xl/_rels/workbook.xml.rels"] = relsXml.replace(relTag, "");
+	files["xl/workbook.xml"] = Buffer.from(workbookXml.replace(sheetTag, ""));
+	files["xl/_rels/workbook.xml.rels"] = Buffer.from(relsXml.replace(relTag, ""));
 
-	const contentTypes = files["[Content_Types].xml"];
+	const contentTypes = files["[Content_Types].xml"]?.toString();
 
 	if (contentTypes) {
-		files["[Content_Types].xml"] = contentTypes.replace(
+		files["[Content_Types].xml"] = Buffer.from(contentTypes.replace(
 			new RegExp(`<Override[^>]+PartName=["']/${targetPath}["'][^>]*/>`, "g"),
 			"",
-		);
+		));
 	}
 }
