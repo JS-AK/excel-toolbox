@@ -4,7 +4,7 @@ import zlib from "node:zlib";
 
 const deflateRaw = util.promisify(zlib.deflateRaw);
 
-import { crc32, dosTime, toBytes } from "./utils.js";
+import { crc32, dosTime, toBytes } from "./utils/index.js";
 
 import {
 	CENTRAL_DIR_HEADER_SIG,

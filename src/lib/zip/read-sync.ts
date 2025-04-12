@@ -1,5 +1,7 @@
 import zlib from "node:zlib";
 
+import * as Utils from "./utils/index.js";
+
 /**
  * Parses a ZIP archive from a buffer and extracts the files within.
  *
@@ -25,24 +27,38 @@ export function readSync(buffer: Buffer): Record<string, Buffer> {
 
 		const dataStart = fileNameEnd + extraFieldLength;
 
-		const compressedSize = buffer.readUInt32LE(offset + 18);
 		const useDataDescriptor = (generalPurposeBitFlag & 0x08) !== 0;
 
-		if (useDataDescriptor) {
-			throw new Error(`File ${fileName} uses data descriptor. Not supported in this minimal parser.`);
-		}
-
-		const compressedData = buffer.subarray(dataStart, dataStart + compressedSize);
-
+		let compressedData: Buffer;
 		let content: Buffer;
 
 		try {
-			if (compressionMethod === 0) {
-				content = compressedData;
-			} else if (compressionMethod === 8) {
-				content = zlib.inflateRawSync(compressedData);
+			if (useDataDescriptor) {
+				const { compressedSize, offset: ddOffset } = Utils.findDataDescriptor(buffer, dataStart);
+				compressedData = buffer.subarray(dataStart, dataStart + compressedSize);
+
+				if (compressionMethod === 0) {
+					content = compressedData;
+				} else if (compressionMethod === 8) {
+					content = zlib.inflateRawSync(compressedData);
+				} else {
+					throw new Error(`Unsupported compression method ${compressionMethod}`);
+				}
+
+				offset = ddOffset + 16; // Skip over data descriptor
 			} else {
-				throw new Error(`Unsupported compression method ${compressionMethod}`);
+				const compressedSize = buffer.readUInt32LE(offset + 18);
+				compressedData = buffer.subarray(dataStart, dataStart + compressedSize);
+
+				if (compressionMethod === 0) {
+					content = compressedData;
+				} else if (compressionMethod === 8) {
+					content = zlib.inflateRawSync(compressedData);
+				} else {
+					throw new Error(`Unsupported compression method ${compressionMethod}`);
+				}
+
+				offset = dataStart + compressedSize;
 			}
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Unknown error";
@@ -50,8 +66,6 @@ export function readSync(buffer: Buffer): Record<string, Buffer> {
 		}
 
 		files[fileName] = content;
-
-		offset = dataStart + compressedSize;
 	}
 
 	return files;

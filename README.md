@@ -39,11 +39,11 @@ fs.writeFileSync("output.xlsx", resultBuffer);
 - 🧩 **Merge sheets** from multiple Excel files
 - 🧼 **Clean sheet removal** — by name or index
 - 📎 **Keeps styles and merged cells**
-- 🪶 **Lightweight ZIP and XML handling**
+- 🍃 **Lightweight ZIP and XML handling**
 
 ## API
 
-### `mergeSheetsToBaseFileSync(options)`
+### `mergeSheetsToBaseFileSync(options): Buffer`
 
 #### Parameters
 
