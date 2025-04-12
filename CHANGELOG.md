@@ -1,3 +1,10 @@
+## [1.2.7](https://github.com/JS-AK/excel-toolbox/compare/v1.2.6...v1.2.7) (2025-04-12)
+
+
+### Bug Fixes
+
+* updated zip read ([20fd904](https://github.com/JS-AK/excel-toolbox/commit/20fd904eb1a917769964f07af4f575c035f43379))
+
 ## [1.2.6](https://github.com/JS-AK/excel-toolbox/compare/v1.2.5...v1.2.6) (2025-04-08)
 
 
