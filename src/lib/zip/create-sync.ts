@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import { deflateRawSync } from "node:zlib";
 
-import { crc32, dosTime, toBytes } from "./utils.js";
+import { crc32, dosTime, toBytes } from "./utils/index.js";
 
 import {
 	CENTRAL_DIR_HEADER_SIG,
