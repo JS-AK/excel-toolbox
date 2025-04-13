@@ -16,6 +16,24 @@ import { Buffer } from "node:buffer";
 export const CENTRAL_DIR_HEADER_SIG = Buffer.from("504b0102", "hex");
 
 /**
+ * Precomputed CRC-32 lookup table for optimized checksum calculation.
+ * The table is generated using the standard IEEE 802.3 (Ethernet) polynomial:
+ * 0xEDB88320 (reversed representation of 0x04C11DB7).
+ *
+ * The table is immediately invoked and cached as a constant for performance,
+ * following the common implementation pattern for CRC algorithms.
+ */
+export const CRC32_TABLE = new Uint32Array(256).map((_, n) => {
+	let c = n;
+
+	for (let k = 0; k < 8; k++) {
+		c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+	}
+
+	return c >>> 0;
+});
+
+/**
  * End of Central Directory Record signature (0x504b0506).
  * Marks the end of the central directory and contains global information
  * about the ZIP archive.

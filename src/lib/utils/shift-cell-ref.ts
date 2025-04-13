@@ -1,4 +1,3 @@
-
 /**
  * Shifts the row number in a cell reference by the specified number of rows.
  * The function takes a cell reference string in the format "A1" and a row shift value.

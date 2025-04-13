@@ -1,43 +1,6 @@
 import { Buffer } from "node:buffer";
 
-/**
- * Precomputed CRC-32 lookup table for optimized checksum calculation.
- * The table is generated using the standard IEEE 802.3 (Ethernet) polynomial:
- * 0xEDB88320 (reversed representation of 0x04C11DB7).
- *
- * The table is immediately invoked and cached as a constant for performance,
- * following the common implementation pattern for CRC algorithms.
- */
-const crcTable = (() => {
-	// Create a typed array for better performance with 256 32-bit unsigned integers
-	const table = new Uint32Array(256);
-
-	// Generate table entries for all possible byte values (0-255)
-	for (let i = 0; i < 256; i++) {
-		let crc = i; // Initialize with current byte value
-
-		// Process each bit (8 times)
-		for (let j = 0; j < 8; j++) {
-			/*
-			 * CRC division algorithm:
-			 * 1. If LSB is set (crc & 1), XOR with polynomial
-			 * 2. Right-shift by 1 (unsigned)
-			 *
-			 * The polynomial 0xEDB88320 is:
-			 * - Bit-reversed version of 0x04C11DB7
-			 * - Uses reflected input/output algorithm
-			 */
-			crc = crc & 1
-				? 0xedb88320 ^ (crc >>> 1)  // XOR with polynomial if LSB is set
-				: crc >>> 1;                 // Just shift right if LSB is not set
-		}
-
-		// Store final 32-bit value (>>> 0 ensures unsigned 32-bit representation)
-		table[i] = crc >>> 0;
-	}
-
-	return table;
-})();
+import { CRC32_TABLE } from "../constants.js";
 
 /**
  * Computes a CRC-32 checksum for the given Buffer using the standard IEEE 802.3 polynomial.
@@ -70,7 +33,7 @@ export function crc32(buf: Buffer): number {
 		 * - crc >>> 8 - Shift CRC right by 8 bits (unsigned)
 		 * - ^ crcTable[...] - XOR with precomputed table value
 		 */
-		crc = (crc >>> 8) ^ crcTable[(crc ^ buf[i] as number) & 0xff] as number;
+		crc = (crc >>> 8) ^ CRC32_TABLE[(crc ^ buf[i] as number) & 0xff] as number;
 	}
 
 	/*

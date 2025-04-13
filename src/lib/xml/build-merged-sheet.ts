@@ -32,7 +32,7 @@ export function buildMergedSheet(
 		// Insert <mergeCells> after </sheetData> and before the next XML tag
 		xmlData = xmlData.replace(
 			/(<\/sheetData>)(\s*<)/,
-			`$1\n${mergeCellsXml}\n$2`,
+			`$1${mergeCellsXml}$2`,
 		);
 	}
 
