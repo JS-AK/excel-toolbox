@@ -40,7 +40,7 @@ export async function writeRowsToStream(
 		});
 
 		// Write the row to the file
-		output.write(`<row r="${rowNumber}">${cells.join("")}</row>\n`);
+		output.write(`<row r="${rowNumber}">${cells.join("")}</row>`);
 
 		rowNumber++;
 	}

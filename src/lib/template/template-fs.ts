@@ -218,6 +218,8 @@ export class TemplateFs {
 
 		const { rows, sheetName, startRowNumber } = data;
 
+		if (!sheetName) throw new Error("Sheet name is required");
+
 		// Read XML workbook to find sheet name and path
 		const workbookXml = Xml.extractXmlFromSheet(await this.#readFile("xl/workbook.xml"));
 		const sheetMatch = workbookXml.match(new RegExp(`<sheet[^>]+name="${sheetName}"[^>]+r:id="([^"]+)"[^>]*/>`));
@@ -244,33 +246,68 @@ export class TemplateFs {
 		// Inserted rows flag
 		let inserted = false;
 
-		// Max row number
-		let maxRowNumber = startRowNumber || 1;
-
 		const rl = readline.createInterface({
 			// Process all line breaks
 			crlfDelay: Infinity,
 			input,
 		});
 
+		let isCollecting = false;
+		let collection = "";
+
 		for await (const line of rl) {
-			// If the line contains <row r="...">, find the maximum row number
-			if (!startRowNumber) {
-				const rowMatches = [...line.matchAll(/<row[^>]+r="(\d+)"[^>]*>/g)];
+			// Collect lines between <sheetData> and </sheetData>
+			if (!inserted && isCollecting) {
+				collection += line;
 
-				for (const match of rowMatches) {
-					const rowNum = parseInt(match[1] as string, 10);
+				if (line.includes("</sheetData>")) {
+					const maxRowNumber = startRowNumber ?? Utils.getMaxRowNumber(line);
 
-					if (rowNum >= maxRowNumber) {
-						maxRowNumber = rowNum + 1;
+					isCollecting = false;
+					inserted = true;
+
+					const openTag = collection.match(/<sheetData[^>]*>/)?.[0] ?? "<sheetData>";
+					const closeTag = "</sheetData>";
+
+					const openIdx = collection.indexOf(openTag);
+					const closeIdx = collection.lastIndexOf(closeTag);
+
+					const beforeRows = collection.slice(0, openIdx + openTag.length);
+					const innerRows = collection.slice(openIdx + openTag.length, closeIdx).trim();
+					const afterRows = collection.slice(closeIdx);
+
+					output.write(beforeRows);
+
+					const innerRowsMap = Utils.parseRows(innerRows);
+
+					if (innerRows) {
+						if (startRowNumber) {
+							const filteredRows = Utils.getRowsBelow(innerRowsMap, startRowNumber);
+							if (filteredRows) output.write(filteredRows);
+						} else {
+							output.write(innerRows);
+						}
 					}
+
+					const { rowNumber: actualRowNumber } = await Utils.writeRowsToStream(output, rows, maxRowNumber);
+
+					if (innerRows) {
+						const filteredRows = Utils.getRowsAbove(innerRowsMap, actualRowNumber);
+						if (filteredRows) output.write(filteredRows);
+					}
+
+					output.write(afterRows);
 				}
+
+				continue;
 			}
 
 			// Case 1: <sheetData> and </sheetData> on one line
 			const singleLineMatch = line.match(/(<sheetData[^>]*>)(.*)(<\/sheetData>)/);
 
 			if (!inserted && singleLineMatch) {
+				const maxRowNumber = startRowNumber ?? Utils.getMaxRowNumber(line);
+
 				const fullMatch = singleLineMatch[0];
 
 				const before = line.slice(0, singleLineMatch.index);
@@ -330,6 +367,8 @@ export class TemplateFs {
 
 			// Case 2: <sheetData/>
 			if (!inserted && /<sheetData\s*\/>/.test(line)) {
+				const maxRowNumber = startRowNumber ?? Utils.getMaxRowNumber(line);
+
 				const fullMatch = line.match(/<sheetData\s*\/>/)?.[0] || "";
 				const matchIndex = line.indexOf(fullMatch);
 
@@ -360,11 +399,15 @@ export class TemplateFs {
 
 			// Case 3: <sheetData>
 			if (!inserted && /<sheetData[^>]*>/.test(line)) {
-				throw new Error("Not supported. Work in progress");
+				isCollecting = true;
+
+				collection += line;
+
+				continue;
 			}
 
 			// After inserting rows, just copy the remaining lines
-			output.write(line + "\n");
+			output.write(line);
 		}
 
 		// Close the streams
