@@ -1,3 +1,11 @@
+## [1.3.1](https://github.com/JS-AK/excel-toolbox/compare/v1.3.0...v1.3.1) (2025-04-13)
+
+
+### Bug Fixes
+
+* removed eslint errors ([94a2f71](https://github.com/JS-AK/excel-toolbox/commit/94a2f71b3cf4147d22ae98dccb95c9259df4e1da))
+* updated createWithStream crc32Stream ([809e3ef](https://github.com/JS-AK/excel-toolbox/commit/809e3ef673c6d57bccd723e9496c2c841644feaf))
+
 # [1.3.0](https://github.com/JS-AK/excel-toolbox/compare/v1.2.7...v1.3.0) (2025-04-13)
 
 
