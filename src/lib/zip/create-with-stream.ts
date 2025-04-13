@@ -1,5 +1,5 @@
 import * as path from "node:path";
-import { Transform, Writable } from "node:stream";
+import { PassThrough, Transform, Writable } from "node:stream";
 import { createReadStream } from "node:fs";
 import { pipeline } from "node:stream/promises";
 import zlib from "node:zlib";
@@ -24,23 +24,43 @@ import {
  * @throws {Error} - If the writable stream emits an error.
  */
 export async function createWithStream(fileKeys: string[], destination: string, output: Writable): Promise<void> {
+	// Stores central directory records
 	const centralDirectory: Buffer[] = [];
+
+	// Tracks the current offset in the output stream
 	let offset = 0;
 
 	for (const filename of fileKeys.sort((a, b) => a.localeCompare(b))) {
+		// Prevent directory traversal
 		if (filename.includes("..")) {
 			throw new Error(`Invalid filename: ${filename}`);
 		}
 
+		// Construct absolute path to the file
 		const fullPath = path.join(destination, ...filename.split("/"));
+
+		// Convert filename to UTF-8 buffer
 		const fileNameBuf = Buffer.from(filename, "utf8");
+
+		// Get modification time in DOS format
 		const modTime = dosTime(new Date());
 
+		// Read file as stream
 		const source = createReadStream(fullPath);
+
+		// Create CRC32 transform stream
 		const crc32 = crc32Stream();
+
+		// Create raw deflate stream (no zlib headers)
 		const deflater = zlib.createDeflateRaw();
+
+		// Uncompressed size counter
 		let uncompSize = 0;
+
+		// Compressed size counter
 		let compSize = 0;
+
+		// Store compressed output data
 		const compressedChunks: Buffer[] = [];
 
 		const sizeCounter = new Transform({
@@ -50,73 +70,16 @@ export async function createWithStream(fileKeys: string[], destination: string, 
 			},
 		});
 
-		const collectCompressed = new Transform({
-			transform(chunk, _enc, cb) {
-				compressedChunks.push(chunk);
-				compSize += chunk.length;
-				cb(null, chunk);
-			},
+		const collectCompressed = new PassThrough();
+		collectCompressed.on("data", chunk => {
+			// 		// Count compressed bytes
+			compSize += chunk.length;
+
+			// 		// Save compressed chunk
+			compressedChunks.push(chunk);
 		});
 
-		// deflater.on("data", (chunk) => { console.log("deflater data path:", fullPath, "length:", chunk.length); });
-		// deflater.on("finish", () => { console.log("deflater finished path:", fullPath, "uncompSize:", uncompSize, "compSize:", compSize); });
-		// deflater.on("error", (err) => { console.log("deflater error path:", fullPath, "error:", err); });
-		// deflater.on("close", () => { console.log("deflater closed path:", fullPath); });
-		// deflater.on("pipe", (src) => { console.log("deflater pipe path:", fullPath); });
-		// deflater.on("unpipe", (src) => { console.log("deflater unpipe path:", fullPath); });
-		// deflater.on("drain", () => { console.log("deflater drain path:", fullPath); });
-		// deflater.on("pause", () => { console.log("deflater pause path:", fullPath); });
-		// deflater.on("resume", () => { console.log("deflater resume path:", fullPath); });
-		// deflater.on("end", () => console.log("deflater ended, path:", fullPath));
-
-		// source.on("data", (chunk) => { console.log("source data path:", fullPath, "length:", chunk.length); });
-		// source.on("finish", () => { console.log("source finished path:", fullPath, "uncompSize:", uncompSize, "compSize:", compSize); });
-		// source.on("error", (err) => { console.log("source error path:", fullPath, "error:", err); });
-		// source.on("close", () => { console.log("source closed path:", fullPath); });
-		// source.on("pipe", (src) => { console.log("source pipe path:", fullPath); });
-		// source.on("unpipe", (src) => { console.log("source unpipe path:", fullPath); });
-		// source.on("drain", () => { console.log("source drain path:", fullPath); });
-		// source.on("pause", () => { console.log("source pause path:", fullPath); });
-		// source.on("resume", () => { console.log("source resume path:", fullPath); });
-		// source.on("end", () => console.log("source ended, path:", fullPath));
-
-		// sizeCounter.on("data", (chunk) => { console.log("sizeCounter data path:", fullPath, "length:", chunk.length); });
-		// sizeCounter.on("finish", () => { console.log("sizeCounter finished path:", fullPath, "uncompSize:", uncompSize, "compSize:", compSize); });
-		// sizeCounter.on("error", (err) => { console.log("sizeCounter error path:", fullPath, "error:", err); });
-		// sizeCounter.on("close", () => { console.log("sizeCounter closed path:", fullPath); });
-		// sizeCounter.on("pipe", (src) => { console.log("sizeCounter pipe path:", fullPath); });
-		// sizeCounter.on("unpipe", (src) => { console.log("sizeCounter unpipe path:", fullPath); });
-		// sizeCounter.on("drain", () => { console.log("sizeCounter drain path:", fullPath); });
-		// sizeCounter.on("pause", () => { console.log("sizeCounter pause path:", fullPath); });
-		// sizeCounter.on("resume", () => { console.log("sizeCounter resume path:", fullPath); });
-		// sizeCounter.on("end", () => console.log("sizeCounter ended, path:", fullPath));
-
-		// crc32.on("data", (chunk) => { console.log("crc32 data path:", fullPath, "length:", chunk.length); });
-		// crc32.on("finish", () => { console.log("crc32 finished path:", fullPath, "uncompSize:", uncompSize, "compSize:", compSize); });
-		// crc32.on("error", (err) => { console.log("crc32 error path:", fullPath, "error:", err); });
-		// crc32.on("close", () => { console.log("crc32 closed path:", fullPath); });
-		// crc32.on("pipe", (src) => { console.log("crc32 pipe path:", fullPath); });
-		// crc32.on("unpipe", (src) => { console.log("crc32 unpipe path:", fullPath); });
-		// crc32.on("drain", () => { console.log("crc32 drain path:", fullPath); });
-		// crc32.on("pause", () => { console.log("crc32 pause path:", fullPath); });
-		// crc32.on("resume", () => { console.log("crc32 resume path:", fullPath); });
-		// crc32.on("end", () => console.log("crc32 ended, path:", fullPath));
-
-		collectCompressed.on("data", (/* chunk */) => {/*  console.log("collectCompressed data path:", fullPath, "length:", chunk.length); */ });
-		// collectCompressed.on("finish", () => { console.log("collectCompressed finished path:", fullPath, "uncompSize:", uncompSize, "compSize:", compSize); });
-		// collectCompressed.on("error", (err) => { console.log("collectCompressed error path:", fullPath, "error:", err); });
-		// collectCompressed.on("close", () => { console.log("collectCompressed closed path:", fullPath); });
-		// collectCompressed.on("pipe", (src) => { console.log("collectCompressed pipe path:", fullPath); });
-		// collectCompressed.on("unpipe", (src) => { console.log("collectCompressed unpipe path:", fullPath); });
-		// collectCompressed.on("drain", () => { console.log("collectCompressed drain path:", fullPath); });
-		// collectCompressed.on("pause", () => { console.log("collectCompressed pause path:", fullPath); });
-		// collectCompressed.on("resume", () => { console.log("collectCompressed resume path:", fullPath); });
-		// collectCompressed.on("end", () => console.log("collectCompressed ended, path:", fullPath));
-
-		// deflater.on("readable", () => {
-		// 	console.log("deflater readable path:", fullPath);
-		// });
-
+		// Run all transforms in pipeline: read -> count size -> CRC -> deflate -> collect compressed
 		await pipeline(
 			source,
 			sizeCounter,
@@ -125,83 +88,84 @@ export async function createWithStream(fileKeys: string[], destination: string, 
 			collectCompressed,
 		);
 
-		// await new Promise<void>((resolve, reject) => {
-		// 	source
-		// 		.pipe(sizeCounter)
-		// 		.pipe(crc32)
-		// 		.pipe(deflater)
-		// 		.pipe(collectCompressed)
-		// 		.on("finish", resolve)
-		// 		.on("error", reject);
-
-		// 	source.on("error", reject);
-		// 	deflater.on("error", reject);
-		// });
-
+		// Get final CRC32 value
 		const crc = crc32.digest();
+
+		// Concatenate all compressed chunks into a single buffer
 		const compressed = Buffer.concat(compressedChunks);
 
+		// Create local file header followed by compressed content
 		const localHeader = Buffer.concat([
-			LOCAL_FILE_HEADER_SIG,
-			toBytes(20, 2),
-			toBytes(0, 2),
-			toBytes(8, 2),
-			modTime,
-			toBytes(crc, 4),
-			toBytes(compSize, 4),
-			toBytes(uncompSize, 4),
-			toBytes(fileNameBuf.length, 2),
-			toBytes(0, 2),
-			fileNameBuf,
-			compressed,
+			LOCAL_FILE_HEADER_SIG,          // Local file header signature
+			toBytes(20, 2),                 // Version needed to extract
+			toBytes(0, 2),                  // General purpose bit flag
+			toBytes(8, 2),                  // Compression method (deflate)
+			modTime,                        // File modification time and date
+			toBytes(crc, 4),                // CRC-32 checksum
+			toBytes(compSize, 4),           // Compressed size
+			toBytes(uncompSize, 4),         // Uncompressed size
+			toBytes(fileNameBuf.length, 2), // Filename length
+			toBytes(0, 2),                  // Extra field length
+			fileNameBuf,                    // Filename
+			compressed,                     // Compressed file data
 		]);
 
+		// Write local file header and data to output
 		await new Promise<void>((resolve, reject) => {
 			output.write(localHeader, err => err ? reject(err) : resolve());
 		});
 
+		// Create central directory entry for this file
 		const centralEntry = Buffer.concat([
-			CENTRAL_DIR_HEADER_SIG,
-			toBytes(20, 2),
-			toBytes(20, 2),
-			toBytes(0, 2),
-			toBytes(8, 2),
-			modTime,
-			toBytes(crc, 4),
-			toBytes(compSize, 4),
-			toBytes(uncompSize, 4),
-			toBytes(fileNameBuf.length, 2),
-			toBytes(0, 2),
-			toBytes(0, 2),
-			toBytes(0, 2),
-			toBytes(0, 2),
-			toBytes(0, 4),
-			toBytes(offset, 4),
-			fileNameBuf,
+			CENTRAL_DIR_HEADER_SIG,         // Central directory file header signature
+			toBytes(20, 2),                 // Version made by
+			toBytes(20, 2),                 // Version needed to extract
+			toBytes(0, 2),                  // General purpose bit flag
+			toBytes(8, 2),                  // Compression method
+			modTime,                        // File modification time and date
+			toBytes(crc, 4),                // CRC-32 checksum
+			toBytes(compSize, 4),           // Compressed size
+			toBytes(uncompSize, 4),         // Uncompressed size
+			toBytes(fileNameBuf.length, 2), // Filename length
+			toBytes(0, 2),                  // Extra field length
+			toBytes(0, 2),                  // File comment length
+			toBytes(0, 2),                  // Disk number start
+			toBytes(0, 2),                  // Internal file attributes
+			toBytes(0, 4),                  // External file attributes
+			toBytes(offset, 4),             // Offset of local header
+			fileNameBuf,                    // Filename
 		]);
 
+		// Store for later
 		centralDirectory.push(centralEntry);
+
+		// Update offset after writing this entry
 		offset += localHeader.length;
 	}
 
+	// Total size of central directory
 	const centralDirSize = centralDirectory.reduce((sum, entry) => sum + entry.length, 0);
+
+	// Start of central directory
 	const centralDirOffset = offset;
 
+	// Write each central directory entry to output
 	for (const entry of centralDirectory) {
 		await new Promise<void>((resolve, reject) => {
 			output.write(entry, err => err ? reject(err) : resolve());
 		});
 	}
 
+	// Create and write end of central directory record
 	const endRecord = Buffer.concat([
-		END_OF_CENTRAL_DIR_SIG,
-		toBytes(0, 2),
-		toBytes(0, 2),
-		toBytes(centralDirectory.length, 2),
-		toBytes(centralDirectory.length, 2),
-		toBytes(centralDirSize, 4),
-		toBytes(centralDirOffset, 4),
-		toBytes(0, 2),
+		END_OF_CENTRAL_DIR_SIG,              // End of central directory signature
+		toBytes(0, 2),                       // Number of this disk
+		toBytes(0, 2),                       // Disk with start of central directory
+		toBytes(centralDirectory.length, 2), // Total entries on this disk
+		toBytes(centralDirectory.length, 2), // Total entries overall
+		toBytes(centralDirSize, 4),          // Size of central directory
+		toBytes(centralDirOffset, 4),        // Offset of start of central directory
+		toBytes(0, 2),                       // ZIP file comment length
 	]);
 
 	await new Promise<void>((resolve, reject) => {
