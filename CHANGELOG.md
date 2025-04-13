@@ -1,3 +1,15 @@
+# [1.3.0](https://github.com/JS-AK/excel-toolbox/compare/v1.2.7...v1.3.0) (2025-04-13)
+
+
+### Bug Fixes
+
+* updated TemplateFs insertRowsStream case 3 ([60538f7](https://github.com/JS-AK/excel-toolbox/commit/60538f7278e39a52557b049abc86ec8ebf0b8379))
+
+
+### Features
+
+* added TemplateFs ([fb59865](https://github.com/JS-AK/excel-toolbox/commit/fb59865864bb129b2f9435559812b8e7cdd445a6))
+
 ## [1.2.7](https://github.com/JS-AK/excel-toolbox/compare/v1.2.6...v1.2.7) (2025-04-12)
 
 
