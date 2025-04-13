@@ -102,7 +102,7 @@ export async function createWithStream(fileKeys: string[], destination: string, 
 		// crc32.on("resume", () => { console.log("crc32 resume path:", fullPath); });
 		// crc32.on("end", () => console.log("crc32 ended, path:", fullPath));
 
-		collectCompressed.on("data", (chunk) => {/*  console.log("collectCompressed data path:", fullPath, "length:", chunk.length); */ });
+		collectCompressed.on("data", (/* chunk */) => {/*  console.log("collectCompressed data path:", fullPath, "length:", chunk.length); */ });
 		// collectCompressed.on("finish", () => { console.log("collectCompressed finished path:", fullPath, "uncompSize:", uncompSize, "compSize:", compSize); });
 		// collectCompressed.on("error", (err) => { console.log("collectCompressed error path:", fullPath, "error:", err); });
 		// collectCompressed.on("close", () => { console.log("collectCompressed closed path:", fullPath); });
