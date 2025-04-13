@@ -25,6 +25,12 @@ export function crc32Stream(): Transform & { digest: () => number } {
 	let crc = 0xffffffff;
 
 	const transform: Transform & { digest?: () => number } = new Transform({
+		final(callback) {
+			callback();
+		},
+		flush(callback) {
+			callback();
+		},
 		transform(chunk, _encoding, callback) {
 			for (let i = 0; i < chunk.length; i++) {
 				crc = crc32(chunk[i], crc);
