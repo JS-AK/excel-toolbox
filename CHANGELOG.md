@@ -1,3 +1,10 @@
+## [1.3.2](https://github.com/JS-AK/excel-toolbox/compare/v1.3.1...v1.3.2) (2025-04-13)
+
+
+### Bug Fixes
+
+* updated createWithStream ([a7cdf61](https://github.com/JS-AK/excel-toolbox/commit/a7cdf616a890edfc5e0a90ddfa2f716d1152b91a))
+
 ## [1.3.1](https://github.com/JS-AK/excel-toolbox/compare/v1.3.0...v1.3.1) (2025-04-13)
 
 
