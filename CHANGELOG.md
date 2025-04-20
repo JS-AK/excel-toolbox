@@ -1,3 +1,15 @@
+# [1.4.0](https://github.com/JS-AK/excel-toolbox/compare/v1.3.2...v1.4.0) (2025-04-20)
+
+
+### Bug Fixes
+
+* added TemplateFs getSheetPath ([3429cb2](https://github.com/JS-AK/excel-toolbox/commit/3429cb205800373445d4aa903397ecca305aa04b))
+
+
+### Features
+
+* updated TemplateFs added copySheet ([bfb441f](https://github.com/JS-AK/excel-toolbox/commit/bfb441f90ef0cc011892ed2f772b4e081a100917))
+
 ## [1.3.2](https://github.com/JS-AK/excel-toolbox/compare/v1.3.1...v1.3.2) (2025-04-13)
 
 
