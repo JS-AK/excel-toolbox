@@ -72,10 +72,10 @@ export async function createWithStream(fileKeys: string[], destination: string, 
 
 		const collectCompressed = new PassThrough();
 		collectCompressed.on("data", chunk => {
-			// 		// Count compressed bytes
+			// Count compressed bytes
 			compSize += chunk.length;
 
-			// 		// Save compressed chunk
+			// Save compressed chunk
 			compressedChunks.push(chunk);
 		});
 
