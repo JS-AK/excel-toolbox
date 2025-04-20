@@ -14,5 +14,10 @@
 		"useUnknownInCatchVariables": true,
 		"noUncheckedIndexedAccess": true,
 		"skipLibCheck": true
-	}
+	},
+	"exclude": [
+		"build",
+		"**/*.spec.ts",
+		"vitest.config.ts"
+	],
 }
