@@ -85,6 +85,80 @@ export class TemplateFs {
 	}
 
 	/**
+	 * Expand table rows in the given sheet and shared strings XML.
+	 *
+	 * @param {string} sheetXml - The XML content of the sheet.
+	 * @param {string} sharedStringsXml - The XML content of the shared strings.
+	 * @param {Record<string, unknown>} replacements - An object containing replacement values.
+	 *
+	 * @returns {Object} An object with two properties:
+	 *   - sheet: The expanded sheet XML.
+	 *   - shared: The expanded shared strings XML.
+	 * @experimental This API is experimental and might change in future versions.
+	 */
+	#expandTableRows(
+		sheetXml: string,
+		sharedStringsXml: string,
+		replacements: Record<string, unknown>,
+	): { sheet: string; shared: string } {
+		const {
+			initialMergeCells,
+			mergeCellMatches,
+			modifiedXml,
+		} = processMergeCells(sheetXml);
+
+		const {
+			sharedIndexMap,
+			sharedStrings,
+			sharedStringsHeader,
+			sheetMergeCells,
+		} = processSharedStrings(sharedStringsXml);
+
+		const { lastIndex, resultRows, rowShift } = processRows({
+			mergeCellMatches,
+			replacements,
+			sharedIndexMap,
+			sharedStrings,
+			sheetMergeCells,
+			sheetXml: modifiedXml,
+		});
+
+		return processBuild({
+			initialMergeCells,
+			lastIndex,
+			mergeCellMatches,
+			resultRows,
+			rowShift,
+			sharedStrings,
+			sharedStringsHeader,
+			sheetMergeCells,
+			sheetXml: modifiedXml,
+		});
+	}
+
+	/**
+	 * Get the path of the sheet with the given name inside the workbook.
+	 * @param sheetName The name of the sheet to find.
+	 * @returns The path of the sheet inside the workbook.
+	 * @throws {Error} If the sheet is not found.
+	 */
+	async #getSheetPath(sheetName: string): Promise<string> {
+		// Read XML workbook to find sheet name and path
+		const workbookXml = Xml.extractXmlFromSheet(await this.#readFile("xl/workbook.xml"));
+		const sheetMatch = workbookXml.match(new RegExp(`<sheet[^>]+name="${sheetName}"[^>]+r:id="([^"]+)"[^>]*/>`));
+
+		if (!sheetMatch) throw new Error(`Sheet "${sheetName}" not found`);
+
+		const rId = sheetMatch[1];
+		const relsXml = Xml.extractXmlFromSheet(await this.#readFile("xl/_rels/workbook.xml.rels"));
+		const relMatch = relsXml.match(new RegExp(`<Relationship[^>]+Id="${rId}"[^>]+Target="([^"]+)"[^>]*/>`));
+
+		if (!relMatch) throw new Error(`Relationship "${rId}" not found`);
+
+		return "xl/" + relMatch[1]!.replace(/^\/?xl\//, "");
+	}
+
+	/**
 	 * Reads all files from the destination directory.
 	 * @private
 	 * @returns {Promise<Record<string, Buffer>>} An object with file keys and their contents as Buffers.
@@ -140,6 +214,43 @@ export class TemplateFs {
 		await fs.writeFile(fullPath, Buffer.isBuffer(content) ? content : Buffer.from(content));
 	}
 
+	async #substitute(sheetName: string, replacements: Record<string, unknown>): Promise<void> {
+		const sharedStringsPath = "xl/sharedStrings.xml";
+		const sheetPath = await this.#getSheetPath(sheetName);
+
+		let sharedStringsContent = "";
+		let sheetContent = "";
+
+		if (this.fileKeys.has(sharedStringsPath)) {
+			sharedStringsContent = Xml.extractXmlFromSheet(await this.#readFile(sharedStringsPath));
+		}
+
+		if (this.fileKeys.has(sheetPath)) {
+			sheetContent = Xml.extractXmlFromSheet(await this.#readFile(sheetPath));
+
+			const TABLE_REGEX = /\$\{table:([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\}/g;
+
+			const hasTablePlaceholders = TABLE_REGEX.test(sharedStringsContent) || TABLE_REGEX.test(sheetContent);
+
+			if (hasTablePlaceholders) {
+				const result = this.#expandTableRows(sheetContent, sharedStringsContent, replacements);
+
+				sheetContent = result.sheet;
+				sharedStringsContent = result.shared;
+			}
+		}
+
+		if (this.fileKeys.has(sharedStringsPath)) {
+			sharedStringsContent = Utils.applyReplacements(sharedStringsContent, replacements);
+			await this.#set(sharedStringsPath, sharedStringsContent);
+		}
+
+		if (this.fileKeys.has(sheetPath)) {
+			sheetContent = Utils.applyReplacements(sheetContent, replacements);
+			await this.#set(sheetPath, sheetContent);
+		}
+	}
+
 	/**
 	 * Validates the template by checking all required files exist.
 	 *
@@ -159,6 +270,16 @@ export class TemplateFs {
 		}
 	}
 
+	/**
+	 * Copies a sheet from the template to a new name.
+	 *
+	 * @param {string} sourceName - The name of the sheet to copy.
+	 * @param {string} newName - The new name for the sheet.
+	 * @returns {Promise<void>}
+	 * @throws {Error} If the sheet with the source name does not exist.
+	 * @throws {Error} If a sheet with the new name already exists.
+	 * @experimental This API is experimental and might change in future versions.
+	 */
 	async copySheet(sourceName: string, newName: string): Promise<void> {
 		this.#ensureNotProcessing();
 		this.#ensureNotDestroyed();
@@ -248,111 +369,29 @@ export class TemplateFs {
 		}
 	}
 
+	/**
+	 * Replaces placeholders in the given sheet with values from the replacements map.
+	 *
+	 * The function searches for placeholders in the format `${key}` within the sheet
+	 * content, where `key` corresponds to a path in the replacements object.
+	 * If a value is found for the key, it replaces the placeholder with the value.
+	 * If no value is found, the original placeholder remains unchanged.
+	 *
+	 * @param sheetName - The name of the sheet to be replaced.
+	 * @param replacements - An object where keys represent placeholder paths and values are the replacements.
+	 * @returns A promise that resolves when the substitution is complete.
+	 */
 	substitute(sheetName: string, replacements: Record<string, unknown>): Promise<void> {
-		return this.#substitute(sheetName, replacements);
-	}
-
-	async #substitute(sheetName: string, replacements: Record<string, unknown>): Promise<void> {
 		this.#ensureNotProcessing();
 		this.#ensureNotDestroyed();
 
 		this.#isProcessing = true;
 
 		try {
-			const sharedStringsPath = "xl/sharedStrings.xml";
-			const sheetPath = `xl/worksheets/${sheetName}.xml`;
-
-			let sharedStringsContent = "";
-			let sheetContent = "";
-
-			if (this.fileKeys.has(sharedStringsPath)) {
-				sharedStringsContent = Xml.extractXmlFromSheet(await this.#readFile(sharedStringsPath));
-			}
-
-			if (this.fileKeys.has(sheetPath)) {
-				sheetContent = Xml.extractXmlFromSheet(await this.#readFile(sheetPath));
-
-				const TABLE_REGEX = /\$\{table:([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\}/g;
-
-				const hasTablePlaceholders = TABLE_REGEX.test(sharedStringsContent) || TABLE_REGEX.test(sheetContent);
-
-				if (hasTablePlaceholders) {
-					const result = this.expandTableRows(sheetContent, sharedStringsContent, replacements);
-
-					sheetContent = result.sheet;
-					sharedStringsContent = result.shared;
-				}
-			}
-
-			if (this.fileKeys.has(sharedStringsPath)) {
-				sharedStringsContent = Utils.applyReplacements(sharedStringsContent, replacements);
-				await this.#set(sharedStringsPath, sharedStringsContent);
-			}
-
-			if (this.fileKeys.has(sheetPath)) {
-				sheetContent = Utils.applyReplacements(sheetContent, replacements);
-				await this.#set(sheetPath, sheetContent);
-			}
-
+			return this.#substitute(sheetName, replacements);
 		} finally {
 			this.#isProcessing = false;
 		}
-	}
-
-	expandTableRows(
-		sheetXml: string,
-		sharedStringsXml: string,
-		replacements: Record<string, unknown>,
-	): { sheet: string; shared: string } {
-		const {
-			initialMergeCells,
-			mergeCellMatches,
-			modifiedXml,
-		} = processMergeCells(sheetXml);
-
-		const {
-			sharedIndexMap,
-			sharedStrings,
-			sharedStringsHeader,
-			sheetMergeCells,
-		} = processSharedStrings(sharedStringsXml);
-
-		const { lastIndex, resultRows, rowShift } = processRows({
-			mergeCellMatches,
-			replacements,
-			sharedIndexMap,
-			sharedStrings,
-			sheetMergeCells,
-			sheetXml: modifiedXml,
-		});
-
-		return processBuild({
-			initialMergeCells,
-			lastIndex,
-			mergeCellMatches,
-			resultRows,
-			rowShift,
-			sharedStrings,
-			sharedStringsHeader,
-			sheetMergeCells,
-			sheetXml: modifiedXml,
-		});
-	}
-
-	resolveValue<T extends Record<string, unknown>>(obj: T, key: string): T | undefined {
-		const parts = key.split(".");
-
-		let current = obj;
-
-		for (const part of parts) {
-			if (current == null || typeof current !== "object" || Array.isArray(current)) {
-				return undefined;
-			}
-
-			current = current[part] as T;
-		}
-
-		return current;
 	}
 
 	/**
