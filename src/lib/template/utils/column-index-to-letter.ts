@@ -18,9 +18,11 @@ export function columnIndexToLetter(index: number): string {
 	}
 
 	let letters = "";
+
 	while (index >= 0) {
 		letters = String.fromCharCode((index % 26) + 65) + letters;
 		index = Math.floor(index / 26) - 1;
 	}
+
 	return letters;
 }
