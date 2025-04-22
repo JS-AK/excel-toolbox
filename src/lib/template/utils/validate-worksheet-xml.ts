@@ -6,25 +6,38 @@ interface ValidationResult {
 	};
 }
 
+/**
+ * Validates an Excel worksheet XML against the expected structure and rules.
+ *
+ * Checks the following:
+ * 1. XML starts with <?xml declaration
+ * 2. Root element is worksheet
+ * 3. Required elements are present
+ * 4. row numbers are in ascending order
+ * 5. No duplicate row numbers
+ * 6. No overlapping merge ranges
+ * 7. All cells are within the specified dimension
+ * 8. All mergeCell tags refer to existing cells
+ *
+ * @param xml The raw XML content of the worksheet
+ * @returns A ValidationResult object indicating if the XML is valid, and an error message if it's not
+ */
 export function validateWorksheetXml(xml: string): ValidationResult {
 	const createError = (message: string, details?: string): ValidationResult => ({
-		error: {
-			details,
-			message,
-		},
+		error: { details, message },
 		isValid: false,
 	});
 
-	// 1. Проверка базовой структуры XML
+	// 1. Check for XML declaration
 	if (!xml.startsWith("<?xml")) {
-		return createError("XML должен начинаться с декларации <?xml>");
+		return createError("XML must start with <?xml> declaration");
 	}
 
 	if (!xml.includes("<worksheet") || !xml.includes("</worksheet>")) {
-		return createError("Не найден корневой элемент worksheet");
+		return createError("Root element worksheet not found");
 	}
 
-	// 2. Проверка наличия обязательных элементов
+	// 2. Check for required elements
 	const requiredElements = [
 		{ name: "sheetViews", tag: "<sheetViews>" },
 		{ name: "sheetFormatPr", tag: "<sheetFormatPr" },
@@ -35,76 +48,76 @@ export function validateWorksheetXml(xml: string): ValidationResult {
 
 	for (const { name, tag } of requiredElements) {
 		if (!xml.includes(tag)) {
-			return createError(`Отсутствует обязательный элемент ${name}`);
+			return createError(`Missing required element ${name}`);
 		}
 	}
 
-	// 3. Извлечение и проверка sheetData
+	// 3. Extract and validate sheetData
 	const sheetDataStart = xml.indexOf("<sheetData>");
 	const sheetDataEnd = xml.indexOf("</sheetData>");
 	if (sheetDataStart === -1 || sheetDataEnd === -1) {
-		return createError("Некорректная структура sheetData");
+		return createError("Invalid sheetData structure");
 	}
 
 	const sheetDataContent = xml.substring(sheetDataStart + 10, sheetDataEnd);
 	const rows = sheetDataContent.split("</row>");
 
 	if (rows.length < 2) {
-		return createError("SheetData должен содержать хотя бы одну строку");
+		return createError("SheetData should contain at least one row");
 	}
 
-	// Собираем информацию о всех строках и ячейках
+	// Collect information about all rows and cells
 	const allRows: number[] = [];
 	const allCells: { row: number; col: string }[] = [];
 	let prevRowNum = 0;
 
 	for (const row of rows.slice(0, -1)) {
 		if (!row.includes("<row ")) {
-			return createError("Не найден тег row", `Фрагмент: ${row.substring(0, 50)}...`);
+			return createError("Row tag not found", `Fragment: ${row.substring(0, 50)}...`);
 		}
 
 		if (!row.includes("<c ")) {
-			return createError("Строка не содержит ячеек", `Строка: ${row.substring(0, 50)}...`);
+			return createError("Row does not contain any cells", `Row: ${row.substring(0, 50)}...`);
 		}
 
-		// Извлекаем номер строки
+		// Extract row number
 		const rowNumMatch = row.match(/<row\s+r="(\d+)"/);
 		if (!rowNumMatch) {
-			return createError("Не указан номер строки (атрибут r)", `Строка: ${row.substring(0, 50)}...`);
+			return createError("Row number (attribute r) not specified", `Row: ${row.substring(0, 50)}...`);
 		}
 		const rowNum = parseInt(rowNumMatch[1]!);
 
-		// Проверка уникальности строк
+		// Check for duplicate row numbers
 		if (allRows.includes(rowNum)) {
-			return createError("Найден дубликат номера строки", `Номер строки: ${rowNum}`);
+			return createError("Duplicate row number found", `Row number: ${rowNum}`);
 		}
 		allRows.push(rowNum);
 
-		// Проверка порядка строк (должны идти по возрастанию)
+		// Check row number order (should be in ascending order)
 		if (rowNum <= prevRowNum) {
 			return createError(
-				"Нарушен порядок следования строк",
-				`Текущая строка: ${rowNum}, предыдущая: ${prevRowNum}`,
+				"Row order is broken",
+				`Current row: ${rowNum}, previous: ${prevRowNum}`,
 			);
 		}
 		prevRowNum = rowNum;
 
-		// Извлекаем все ячейки в строке
+		// Extract all cells in the row
 		const cells = row.match(/<c\s+r="([A-Z]+)(\d+)"/g) || [];
 		for (const cell of cells) {
 			const match = cell.match(/<c\s+r="([A-Z]+)(\d+)"/);
 			if (!match) {
-				return createError("Некорректный формат ячейки", `Ячейка: ${cell}`);
+				return createError("Invalid cell format", `Cell: ${cell}`);
 			}
 
 			const col = match[1]!;
 			const cellRowNum = parseInt(match[2]!);
 
-			// Проверяем соответствие номера строки
+			// Check row number match for each cell
 			if (cellRowNum !== rowNum) {
 				return createError(
-					"Несоответствие номера строки в ячейке",
-					`Ожидалось: ${rowNum}, найдено: ${cellRowNum} в ячейке ${col}${cellRowNum}`,
+					"Row number mismatch in cell",
+					`Expected: ${rowNum}, found: ${cellRowNum} in cell ${col}${cellRowNum}`,
 				);
 			}
 
@@ -115,40 +128,40 @@ export function validateWorksheetXml(xml: string): ValidationResult {
 		}
 	}
 
-	// 4. Проверка mergeCells
+	// 4. Check mergeCells
 	const mergeCellsStart = xml.indexOf("<mergeCells");
 	const mergeCellsEnd = xml.indexOf("</mergeCells>");
 	if (mergeCellsStart === -1 || mergeCellsEnd === -1) {
-		return createError("Некорректная структура mergeCells");
+		return createError("Invalid mergeCells structure");
 	}
 
 	const mergeCellsContent = xml.substring(mergeCellsStart, mergeCellsEnd);
 	const countMatch = mergeCellsContent.match(/count="(\d+)"/);
 	if (!countMatch) {
-		return createError("Не указано количество объединенных ячеек (атрибут count)");
+		return createError("Count attribute not specified for mergeCells");
 	}
 
 	const mergeCellTags = mergeCellsContent.match(/<mergeCell\s+ref="([A-Z]+\d+:[A-Z]+\d+)"\s*\/>/g);
 	if (!mergeCellTags) {
-		return createError("Не найдены объединенные ячейки");
+		return createError("No merged cells found");
 	}
 
-	// Проверка соответствия заявленного количества и фактического
+	// Check if the number of mergeCells matches the count attribute
 	if (mergeCellTags.length !== parseInt(countMatch[1]!)) {
 		return createError(
-			"Несоответствие количества объединенных ячеек",
-			`Ожидалось: ${countMatch[1]}, найдено: ${mergeCellTags.length}`,
+			"Mismatch in the number of merged cells",
+			`Expected: ${countMatch[1]}, found: ${mergeCellTags.length}`,
 		);
 	}
 
-	// Проверка на дублирующиеся mergeCell
+	// Check for duplicates of mergeCell
 	const mergeRefs = new Set<string>();
 	const duplicates = new Set<string>();
 
 	for (const mergeTag of mergeCellTags) {
 		const refMatch = mergeTag.match(/ref="([A-Z]+\d+:[A-Z]+\d+)"/);
 		if (!refMatch) {
-			return createError("Некорректный формат объединения ячеек", `Тег: ${mergeTag}`);
+			return createError("Invalid merge cell format", `Tag: ${mergeTag}`);
 		}
 
 		const ref = refMatch[1];
@@ -161,12 +174,12 @@ export function validateWorksheetXml(xml: string): ValidationResult {
 
 	if (duplicates.size > 0) {
 		return createError(
-			"Найдены дублирующиеся объединения ячеек",
-			`Дубликаты: ${Array.from(duplicates).join(", ")}`,
+			"Duplicates of merged cells found",
+			`Duplicates: ${Array.from(duplicates).join(", ")}`,
 		);
 	}
 
-	// Проверка пересекающихся объединений
+	// Check for overlapping merge ranges
 	const mergedRanges = Array.from(mergeRefs).map(ref => {
 		const [start, end] = ref.split(":");
 		return {
@@ -184,17 +197,17 @@ export function validateWorksheetXml(xml: string): ValidationResult {
 
 			if (rangesIntersect(a!, b!)) {
 				return createError(
-					"Найдены пересекающиеся объединения ячеек",
-					`Пересекаются: ${getRangeString(a!)} и ${getRangeString(b!)}`,
+					"Found intersecting merged cells",
+					`Intersecting: ${getRangeString(a!)} and ${getRangeString(b!)}`,
 				);
 			}
 		}
 	}
 
-	// 5. Проверка dimension и соответствия с реальными данными
+	// 5. Check dimension and match with real data
 	const dimensionMatch = xml.match(/<dimension\s+ref="([A-Z]+\d+:[A-Z]+\d+)"\s*\/>/);
 	if (!dimensionMatch) {
-		return createError("Не указана область данных (dimension)");
+		return createError("Data range (dimension) is not specified");
 	}
 
 	const [startCell, endCell] = dimensionMatch[1]!.split(":");
@@ -204,36 +217,36 @@ export function validateWorksheetXml(xml: string): ValidationResult {
 	const endRow = parseInt(endCell!.match(/\d+/)?.[0] || "0");
 
 	if (!startCol || !endCol || isNaN(startRow) || isNaN(endRow)) {
-		return createError("Некорректный формат dimension", `Dimension: ${dimensionMatch[1]}`);
+		return createError("Invalid dimension format", `Dimension: ${dimensionMatch[1]}`);
 	}
 
 	const startColNum = colToNumber(startCol);
 	const endColNum = colToNumber(endCol);
 
-	// Проверяем все ячейки на вхождение в dimension
+	// Check if all cells are within the dimension
 	for (const cell of allCells) {
 		const colNum = colToNumber(cell.col);
 
 		if (cell.row < startRow || cell.row > endRow) {
 			return createError(
-				"Ячейка находится вне указанной области (по строке)",
-				`Ячейка: ${cell.col}${cell.row}, dimension: ${dimensionMatch[1]}`,
+				"Cell is outside the specified area (by row)",
+				`Cell: ${cell.col}${cell.row}, dimension: ${dimensionMatch[1]}`,
 			);
 		}
 
 		if (colNum < startColNum || colNum > endColNum) {
 			return createError(
-				"Ячейка находится вне указанной области (по столбцу)",
-				`Ячейка: ${cell.col}${cell.row}, dimension: ${dimensionMatch[1]}`,
+				"Cell is outside the specified area (by column)",
+				`Cell: ${cell.col}${cell.row}, dimension: ${dimensionMatch[1]}`,
 			);
 		}
 	}
 
-	// 6. Дополнительная проверка: все mergeCell ссылаются на существующие ячейки
+	// 6. Additional check: all mergeCell tags refer to existing cells
 	for (const mergeTag of mergeCellTags) {
 		const refMatch = mergeTag.match(/ref="([A-Z]+\d+:[A-Z]+\d+)"/);
 		if (!refMatch) {
-			return createError("Некорректный формат объединения ячеек", `Тег: ${mergeTag}`);
+			return createError("Invalid merge cell format", `Tag: ${mergeTag}`);
 		}
 
 		const [cell1, cell2] = refMatch[1]!.split(":");
@@ -243,18 +256,17 @@ export function validateWorksheetXml(xml: string): ValidationResult {
 		const cell2Row = parseInt(cell2!.match(/\d+/)?.[0] || "0");
 
 		if (!cell1Col || !cell2Col || isNaN(cell1Row) || isNaN(cell2Row)) {
-			return createError("Некорректные координаты объединения ячеек", `Объединение: ${refMatch[1]}`);
+			return createError("Invalid merged cell coordinates", `Merged cells: ${refMatch[1]}`);
 		}
 
-		// Проверяем что объединяемые ячейки существуют
+		// Check if the merged cells exist
 		const cell1Exists = allCells.some(c => c.row === cell1Row && c.col === cell1Col);
 		const cell2Exists = allCells.some(c => c.row === cell2Row && c.col === cell2Col);
 
 		if (!cell1Exists || !cell2Exists) {
 			return createError(
-				"Объединение ссылается на несуществующие ячейки",
-				`Объединение: ${refMatch[1]}, отсутствует: ${!cell1Exists ? `${cell1Col}${cell1Row}` : `${cell2Col}${cell2Row}`
-				}`,
+				"Merged cell reference points to non-existent cells",
+				`Merged cells: ${refMatch[1]}, missing: ${!cell1Exists ? `${cell1Col}${cell1Row}` : `${cell2Col}${cell2Row}`}`,
 			);
 		}
 	}
@@ -262,7 +274,7 @@ export function validateWorksheetXml(xml: string): ValidationResult {
 	return { isValid: true };
 }
 
-// Вспомогательные функции для проверки пересечений
+// A function to check if two ranges intersect
 function rangesIntersect(a: { startCol: string; startRow: number; endCol: string; endRow: number },
 	b: { startCol: string; startRow: number; endCol: string; endRow: number }): boolean {
 	const aStartColNum = colToNumber(a.startCol);
@@ -270,20 +282,21 @@ function rangesIntersect(a: { startCol: string; startRow: number; endCol: string
 	const bStartColNum = colToNumber(b.startCol);
 	const bEndColNum = colToNumber(b.endCol);
 
-	// Проверяем пересечение по строкам
+	// Check if the rows intersect
 	const rowsIntersect = !(a.endRow < b.startRow || a.startRow > b.endRow);
 
-	// Проверяем пересечение по колонкам
+	// Check if the columns intersect
 	const colsIntersect = !(aEndColNum < bStartColNum || aStartColNum > bEndColNum);
 
 	return rowsIntersect && colsIntersect;
 }
 
+// Function to get the range string1
 function getRangeString(range: { startCol: string; startRow: number; endCol: string; endRow: number }): string {
 	return `${range.startCol}${range.startRow}:${range.endCol}${range.endRow}`;
 }
 
-// Функция для преобразования букв колонки в число
+// Function to convert column letters to numbers
 function colToNumber(col: string): number {
 	let num = 0;
 	for (let i = 0; i < col.length; i++) {

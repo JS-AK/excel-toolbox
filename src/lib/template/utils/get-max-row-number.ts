@@ -7,7 +7,7 @@
 export function getMaxRowNumber(line : string): number {
 	let result = 1;
 
-	const rowMatches = [...line.matchAll(/<row[^>]+r="(\d+)"[^>]*>/g)];
+	const rowMatches = [...line.matchAll(/<row[^>]+r="(\d+)"[^>]*>/gi)];
 
 	for (const match of rowMatches) {
 		const rowNum = parseInt(match[1] as string, 10);

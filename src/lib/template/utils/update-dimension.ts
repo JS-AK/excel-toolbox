@@ -28,10 +28,12 @@ function columnLetterToNumber(letters: string): number {
 
 function columnNumberToLetter(num: number): string {
 	let letters = "";
+
 	while (num > 0) {
 		const rem = (num - 1) % 26;
 		letters = String.fromCharCode(65 + rem) + letters;
 		num = Math.floor((num - 1) / 26);
 	}
+
 	return letters;
 }

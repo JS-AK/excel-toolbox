@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 
 import { columnIndexToLetter } from "./column-index-to-letter.js";
+import { escapeXml } from "./escape-xml.js";
 
 /**
  * Writes an async iterable of rows to an Excel XML file.
@@ -35,7 +36,8 @@ export async function writeRowsToStream(
 		const cells = row.map((value, colIndex) => {
 			const colLetter = columnIndexToLetter(colIndex);
 			const cellRef = `${colLetter}${rowNumber}`;
-			const cellValue = String(value ?? "");
+			const cellValue = escapeXml(String(value ?? ""));
+
 			return `<c r="${cellRef}" t="inlineStr"><is><t>${cellValue}</t></is></c>`;
 		});
 

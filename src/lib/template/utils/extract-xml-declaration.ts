@@ -15,7 +15,7 @@ export function extractXmlDeclaration(xmlString: string): string | null {
 	// const declarationRegex = /^<\?xml\s+[^?]+\?>/;
 	const declarationRegex = /^<\?xml\s+version\s*=\s*["'][^"']+["'](\s+(encoding|standalone)\s*=\s*["'][^"']+["'])*\s*\?>/;
 
-	const match = xmlString.match(declarationRegex);
+	const match = xmlString.trim().match(declarationRegex);
 
 	return match ? match[0] : null;
 }
