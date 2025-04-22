@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/JS-AK/excel-toolbox/compare/v1.4.0...v1.4.1) (2025-04-22)
+
+
+### Bug Fixes
+
+* updated TemplateFs methods ([e3c4a7d](https://github.com/JS-AK/excel-toolbox/commit/e3c4a7da485354af88e852ada6982c7a166f8efd))
+
 # [1.4.0](https://github.com/JS-AK/excel-toolbox/compare/v1.3.2...v1.4.0) (2025-04-20)
 
 
