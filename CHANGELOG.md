@@ -1,3 +1,15 @@
+# [1.5.0](https://github.com/JS-AK/excel-toolbox/compare/v1.4.1...v1.5.0) (2025-04-23)
+
+
+### Bug Fixes
+
+* added prepareRowToCells tests ([a19806e](https://github.com/JS-AK/excel-toolbox/commit/a19806eb97bfd0778e2adcc2d99dc1363328d12f))
+
+
+### Features
+
+* added TemplateMemory ([f896ad5](https://github.com/JS-AK/excel-toolbox/commit/f896ad5786a52c3c7ecf8530c0f34759811d9917))
+
 ## [1.4.1](https://github.com/JS-AK/excel-toolbox/compare/v1.4.0...v1.4.1) (2025-04-22)
 
 
