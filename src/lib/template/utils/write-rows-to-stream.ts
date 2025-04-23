@@ -1,7 +1,9 @@
-import * as fs from "node:fs";
+import { prepareRowToCells } from "./prepare-row-to-cells.js";
 
-import { columnIndexToLetter } from "./column-index-to-letter.js";
-import { escapeXml } from "./escape-xml.js";
+interface WritableLike {
+	write(chunk: string | Buffer): boolean;
+	end?: () => void;
+}
 
 /**
  * Writes an async iterable of rows to an Excel XML file.
@@ -25,26 +27,31 @@ import { escapeXml } from "./escape-xml.js";
  *          plus the number of rows written).
  */
 export async function writeRowsToStream(
-	output: fs.WriteStream,
-	rows: AsyncIterable<unknown[]>,
+	output: WritableLike,
+	rows: AsyncIterable<unknown[] | unknown[][]>,
 	startRowNumber: number,
 ): Promise<{ rowNumber: number }> {
 	let rowNumber = startRowNumber;
 
 	for await (const row of rows) {
 		// Transform the row into XML
-		const cells = row.map((value, colIndex) => {
-			const colLetter = columnIndexToLetter(colIndex);
-			const cellRef = `${colLetter}${rowNumber}`;
-			const cellValue = escapeXml(String(value ?? ""));
+		if (Array.isArray(row[0])) {
+			for (const subRow of row as unknown[][]) {
+				const cells = prepareRowToCells(subRow, rowNumber);
 
-			return `<c r="${cellRef}" t="inlineStr"><is><t>${cellValue}</t></is></c>`;
-		});
+				// Write the row to the file
+				output.write(`<row r="${rowNumber}">${cells.join("")}</row>`);
 
-		// Write the row to the file
-		output.write(`<row r="${rowNumber}">${cells.join("")}</row>`);
+				rowNumber++;
+			}
+		} else {
+			const cells = prepareRowToCells(row, rowNumber);
 
-		rowNumber++;
+			// Write the row to the file
+			output.write(`<row r="${rowNumber}">${cells.join("")}</row>`);
+
+			rowNumber++;
+		}
 	}
 
 	return { rowNumber };
