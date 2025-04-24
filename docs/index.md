@@ -1,84 +1,78 @@
-# Example: Automatic Deployment of TypeScript App to npm with Scope
+# excel-toolbox
 
-## Overview
-This guide outlines the steps to automatically deploy a TypeScript application to npm with a specific scope using GitHub Actions. By setting up this workflow, you can streamline the process of updating and publishing your package to npm, ensuring seamless integration with your development pipeline.
+![ci-cd](https://github.com/JS-AK/excel-toolbox/actions/workflows/ci-cd-master.yml/badge.svg)
 
-## Prerequisites
-Before proceeding, make sure you have the following:
+A lightweight toolkit for working with `.xlsx` Excel files — modify templates, merge sheets, and handle massive datasets without dependencies.
 
-- Access to the GitHub repository containing your TypeScript project.
-- An npm account with permissions to publish packages to the desired scope.
-- GitHub Personal Access Token (GH_TOKEN) with the necessary permissions to push changes and trigger GitHub Actions.
-- npm token (NPM_TOKEN) with permissions to publish packages.
+## Installation
 
-## Workflow Setup
-To automate the deployment process, follow these steps:
+```bash
+npm install @js-ak/excel-toolbox
+```
 
-1. **Create Secrets**: In your GitHub repository, navigate to "Settings" > "Secrets" and add the following secrets:
-    - `GH_TOKEN`: GitHub Personal Access Token.
-    - `NPM_TOKEN`: npm token.
+## Features
 
-2. **Configure GitHub Actions Workflow**: Create or modify your GitHub Actions workflow file (e.g., `.github/workflows/deploy.yml`) to define the deployment steps. Below is a sample workflow file:
+- ✨ Work with templates using `TemplateFs` (filesystem) or `TemplateMemory` (in-memory)
+- 📥 Insert and stream rows into Excel files
+- 🧩 Merge sheets from multiple `.xlsx` files
+- 🧼 Remove sheets by name or index
+- 💎 Preserve styles, merges, and shared strings
 
-    ```yaml
-    name: make-release
+## Template API
 
-    on:
-      push:
-        branches:
-          - master
+### `TemplateFs` and `TemplateMemory`
 
-    jobs:
+Both classes provide the same API for modifying Excel templates.
 
-      runner-job:
-        runs-on: ubuntu-latest
+#### Common Features
 
-        steps:
-          - name: Check out repository code
-            uses: actions/checkout@v4
+- `substitute()` — replace placeholders like `${name}` or `${table:name}`
+- `insertRows()` / `insertRowsStream()` — insert rows statically or via stream
+- `copySheet()` — duplicate existing sheets
+- `validate()` and `save()` / `saveStream()` — output the result
 
-          - name: Install dependencies
-            run: npm ci
+```ts
+import { TemplateFs } from "@js-ak/excel-toolbox";
 
-          - name: Run Tests
-            run: npm test
+const template = await TemplateFs.from({
+  destination: "/tmp/template",
+  source: fs.readFileSync("template.xlsx"),
+});
 
-      release:
-        name: Release
-        runs-on: ubuntu-latest
-        steps:
+await template.substitute("Sheet1", { name: "Alice" });
+await template.insertRows({ sheetName: "Sheet1", rows: [["Data"]] });
+const buffer = await template.save();
+fs.writeFileSync("output.xlsx", buffer);
+```
 
-          - name: Checkout
-            uses: actions/checkout@v4
-            with:
-              fetch-depth: 0
-              persist-credentials: false
+## Sheet Merging API
 
-          - name: Setup Node.js
-            uses: actions/setup-node@v4
-            with:
-              node-version: '20'
-              registry-url: 'https://registry.npmjs.org'
+### `mergeSheetsToBaseFileSync(options): Buffer`
 
-          - name: Install dependencies and build 🔧
-            run: npm ci && npm run build
+Synchronously merges sheets into a base file.
 
-          - name: Make Release
-            run: npx semantic-release
-            env:
-              GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-              NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-    ```
+### `mergeSheetsToBaseFile(options): Promise<Buffer>`
 
-    This workflow triggers on pushes to the `main` branch. It installs dependencies, builds the project, and then publishes it to npm.
+Async version of the above.
 
-3. **Commit and Push Changes**: Commit the workflow file changes to your repository and push them to GitHub. This action triggers the workflow defined in the YAML file.
+#### Example
 
-4. **Monitor Deployment**: Once the workflow is triggered, monitor its progress in the "Actions" tab of your GitHub repository. You should see the workflow executing the defined steps.
+```ts
+import fs from "node:fs";
+import { mergeSheetsToBaseFileSync } from "@js-ak/excel-toolbox";
 
-5. **Verify Deployment**: After successful execution, verify that your TypeScript application has been deployed to npm with the specified scope.
+const baseFile = fs.readFileSync("base.xlsx");
+const dataFile = fs.readFileSync("data.xlsx");
 
-## Conclusion
-By implementing this GitHub Actions workflow, you've automated the process of deploying your TypeScript application to npm, saving time and ensuring consistency in your development workflow. With secrets management and continuous integration in place, you can confidently publish updates to your npm package with ease.
+const result = mergeSheetsToBaseFileSync({
+  baseFile,
+  additions: [{ file: dataFile, sheetIndexes: [1] }],
+  gap: 2,
+});
 
-Happy coding!
+fs.writeFileSync("output.xlsx", result);
+```
+
+## License
+
+MIT — see [LICENSE](./LICENSE)
