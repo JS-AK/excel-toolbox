@@ -2,6 +2,8 @@
 
 ![ci-cd](https://github.com/JS-AK/excel-toolbox/actions/workflows/ci-cd-master.yml/badge.svg)
 
+📘 **Docs:** [js-ak.github.io/excel-toolbox](https://js-ak.github.io/excel-toolbox/)
+
 A lightweight toolkit for working with `.xlsx` Excel files — modify templates, merge sheets, and handle massive datasets without dependencies.
 
 ## Installation
