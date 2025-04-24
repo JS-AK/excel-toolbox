@@ -1,3 +1,5 @@
+export * as Common from "../../utils/index.js";
+
 export * from "./apply-replacements.js";
 export * from "./check-row.js";
 export * from "./check-rows.js";

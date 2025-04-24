@@ -30,6 +30,7 @@ Both classes provide the same API for modifying Excel templates.
 - `insertRows()` / `insertRowsStream()` — insert rows statically or via stream
 - `copySheet()` — duplicate existing sheets
 - `validate()` and `save()` / `saveStream()` — output the result
+- `set()` — manually modify or inject internal files in the template
 
 ```ts
 import { TemplateFs } from "@js-ak/excel-toolbox";

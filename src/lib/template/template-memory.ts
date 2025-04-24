@@ -26,6 +26,13 @@ export class TemplateMemory {
 	 */
 	#isProcessing: boolean = false;
 
+	/**
+	 * Creates a Template instance from a map of file paths to buffers.
+	 *
+	 * @param {Object<string, Buffer>} files - The files to create the template from.
+	 * @throws {Error} If reading or writing files fails.
+	 * @experimental This API is experimental and might change in future versions.
+	 */
 	constructor(files: Record<string, Buffer>) {
 		this.files = files;
 	}
@@ -105,12 +112,91 @@ export class TemplateMemory {
 		});
 	}
 
-	#getXml(fileKey: string): string {
+	/**
+	 * Extracts the XML content from an Excel sheet file.
+	 *
+	 * @param {string} fileKey - The file key of the sheet to extract.
+	 * @returns {string} The XML content of the sheet.
+	 * @throws {Error} If the file key is not found.
+	 * @experimental This API is experimental and might change in future versions.
+	 */
+	#extractXmlFromSheet(fileKey: string): string {
 		if (!this.files[fileKey]) {
 			throw new Error(`${fileKey} not found`);
 		}
 
 		return Xml.extractXmlFromSheet(this.files[fileKey]);
+	}
+
+	/**
+	 * Extracts row data from an Excel sheet file.
+	 *
+	 * @param {string} fileKey - The file key of the sheet to extract.
+	 * @returns {Object} An object containing:
+	 *   - rows: Array of raw XML strings for each <row> element
+	 *   - lastRowNumber: Highest row number found in the sheet (1-based)
+	 *   - mergeCells: Array of merged cell ranges (e.g., [{ref: "A1:B2"}])
+	 *   - xml: The XML content of the sheet
+	 * @throws {Error} If the file key is not found
+	 * @experimental This API is experimental and might change in future versions.
+	 */
+	#extractRowsFromSheet(fileKey: string): {
+		rows: string[];
+		lastRowNumber: number;
+		mergeCells: { ref: string }[];
+		xml: string;
+	} {
+		if (!this.files[fileKey]) {
+			throw new Error(`${fileKey} not found`);
+		}
+
+		return Xml.extractRowsFromSheet(this.files[fileKey]);
+	}
+
+	/**
+	 * Returns the Excel path of the sheet with the given name.
+	 *
+	 * @param sheetName - The name of the sheet to find.
+	 * @returns The Excel path of the sheet.
+	 * @throws {Error} If the sheet with the given name does not exist.
+	 * @experimental This API is experimental and might change in future versions.
+	 */
+	#getSheetPathByName(sheetName: string): string {
+		// Find the sheet
+		const workbookXml = this.#extractXmlFromSheet("xl/workbook.xml");
+		const sheetMatch = workbookXml.match(new RegExp(`<sheet[^>]+name="${sheetName}"[^>]+r:id="([^"]+)"[^>]*/>`));
+
+		if (!sheetMatch || !sheetMatch[1]) {
+			throw new Error(`Sheet "${sheetName}" not found`);
+		}
+
+		const rId = sheetMatch[1];
+		const relsXml = this.#extractXmlFromSheet("xl/_rels/workbook.xml.rels");
+		const relMatch = relsXml.match(new RegExp(`<Relationship[^>]+Id="${rId}"[^>]+Target="([^"]+)"[^>]*/>`));
+
+		if (!relMatch || !relMatch[1]) {
+			throw new Error(`Relationship "${rId}" not found`);
+		}
+
+		const sheetPath = "xl/" + relMatch[1].replace(/^\/?xl\//, "");
+
+		return sheetPath;
+	}
+
+	/**
+	 * Returns the Excel path of the sheet with the given ID.
+	 *
+	 * @param {number} id - The 1-based index of the sheet to find.
+	 * @returns {string} The Excel path of the sheet.
+	 * @throws {Error} If the sheet index is less than 1.
+	 * @experimental This API is experimental and might change in future versions.
+	 */
+	#getSheetPathById(id: number): string {
+		if (id < 1) {
+			throw new Error("Sheet index must be greater than 0");
+		}
+
+		return "xl/worksheets/sheet" + id + ".xml";
 	}
 
 	/**
@@ -121,14 +207,14 @@ export class TemplateMemory {
 	 */
 	async #getSheetPath(sheetName: string): Promise<string> {
 		// Read XML workbook to find sheet name and path
-		const workbookXml = this.#getXml("xl/workbook.xml");
+		const workbookXml = this.#extractXmlFromSheet("xl/workbook.xml");
 		const sheetMatch = workbookXml.match(new RegExp(`<sheet[^>]+name="${sheetName}"[^>]+r:id="([^"]+)"[^>]*/>`));
 
 		if (!sheetMatch) throw new Error(`Sheet "${sheetName}" not found`);
 
 		const rId = sheetMatch[1];
 
-		const relsXml = this.#getXml("xl/_rels/workbook.xml.rels");
+		const relsXml = this.#extractXmlFromSheet("xl/_rels/workbook.xml.rels");
 		const relMatch = relsXml.match(new RegExp(`<Relationship[^>]+Id="${rId}"[^>]+Target="([^"]+)"[^>]*/>`));
 
 		if (!relMatch) throw new Error(`Relationship "${rId}" not found`);
@@ -150,6 +236,20 @@ export class TemplateMemory {
 		this.files[key] = content;
 	}
 
+	/**
+	 * Replaces placeholders in the given sheet with values from the replacements map.
+	 *
+	 * The function searches for placeholders in the format `${key}` within the sheet
+	 * content, where `key` corresponds to a path in the replacements object.
+	 * If a value is found for the key, it replaces the placeholder with the value.
+	 * If no value is found, the original placeholder remains unchanged.
+	 *
+	 * @param sheetName - The name of the sheet to be replaced.
+	 * @param replacements - An object where keys represent placeholder paths and values are the replacements.
+	 * @returns A promise that resolves when the substitution is complete.
+	 * @throws {Error} If the template instance has been destroyed.
+	 * @experimental This API is experimental and might change in future versions.
+	 */
 	async #substitute(sheetName: string, replacements: Record<string, unknown>): Promise<void> {
 		const sharedStringsPath = "xl/sharedStrings.xml";
 		const sheetPath = await this.#getSheetPath(sheetName);
@@ -158,11 +258,11 @@ export class TemplateMemory {
 		let sheetContent = "";
 
 		if (this.files[sharedStringsPath]) {
-			sharedStringsContent = this.#getXml(sharedStringsPath);
+			sharedStringsContent = this.#extractXmlFromSheet(sharedStringsPath);
 		}
 
 		if (this.files[sheetPath]) {
-			sheetContent = this.#getXml(sheetPath);
+			sheetContent = this.#extractXmlFromSheet(sheetPath);
 
 			const TABLE_REGEX = /\$\{table:([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\}/g;
 
@@ -190,6 +290,169 @@ export class TemplateMemory {
 	}
 
 	/**
+	 * Merges rows from other sheets into a base sheet.
+	 *
+	 * @param {Object} data
+	 * @param {Object} data.additions
+	 * @param {number[]} [data.additions.sheetIndexes] - The 1-based indexes of the sheets to extract rows from.
+	 * @param {string[]} [data.additions.sheetNames] - The names of the sheets to extract rows from.
+	 * @param {number} [data.baseSheetIndex=1] - The 1-based index of the sheet in the workbook to add rows to.
+	 * @param {string} [data.baseSheetName] - The name of the sheet in the workbook to add rows to.
+	 * @param {number} [data.gap=0] - The number of empty rows to insert between each added section.
+	 * @throws {Error} If the base sheet index is less than 1.
+	 * @throws {Error} If the base sheet name is not found.
+	 * @throws {Error} If the sheet index is less than 1.
+	 * @throws {Error} If the sheet name is not found.
+	 * @throws {Error} If no sheets are found to merge.
+	 * @experimental This API is experimental and might change in future versions.
+	 */
+	#mergeSheets(data: {
+		additions: { sheetIndexes?: number[]; sheetNames?: string[] };
+		baseSheetIndex?: number;
+		baseSheetName?: string;
+		gap?: number;
+	}): void {
+		const {
+			additions,
+			baseSheetIndex = 1,
+			baseSheetName,
+			gap = 0,
+		} = data;
+
+		let fileKey: string = "";
+
+		if (baseSheetName) {
+			fileKey = this.#getSheetPathByName(baseSheetName);
+		}
+
+		if (baseSheetIndex && !fileKey) {
+			if (baseSheetIndex < 1) {
+				throw new Error("Base sheet index must be greater than 0");
+			}
+
+			fileKey = `xl/worksheets/sheet${baseSheetIndex}.xml`;
+		}
+
+		if (!fileKey) {
+			throw new Error("Base sheet not found");
+		}
+
+		const {
+			lastRowNumber,
+			mergeCells: baseMergeCells,
+			rows: baseRows,
+			xml,
+		} = this.#extractRowsFromSheet(fileKey);
+
+		const allRows = [...baseRows];
+		const allMergeCells = [...baseMergeCells];
+		let currentRowOffset = lastRowNumber + gap;
+
+		const sheetPaths: string[] = [];
+
+		if (additions.sheetIndexes) {
+			sheetPaths.push(...(additions.sheetIndexes).map(e => this.#getSheetPathById(e)));
+		}
+
+		if (additions.sheetNames) {
+			sheetPaths.push(...(additions.sheetNames).map(e => this.#getSheetPathByName(e)));
+		}
+
+		if (sheetPaths.length === 0) {
+			throw new Error("No sheets found to merge");
+		}
+
+		for (const sheetPath of sheetPaths) {
+			if (!this.files[sheetPath]) {
+				throw new Error(`Sheet "${sheetPath}" not found`);
+			}
+
+			const { mergeCells, rows } = Xml.extractRowsFromSheet(this.files[sheetPath]);
+
+			const shiftedRows = Xml.shiftRowIndices(rows, currentRowOffset);
+
+			const shiftedMergeCells = mergeCells.map(cell => {
+				const [start, end] = cell.ref.split(":");
+
+				if (!start || !end) {
+					return cell;
+				}
+
+				const shiftedStart = Utils.Common.shiftCellRef(start, currentRowOffset);
+				const shiftedEnd = Utils.Common.shiftCellRef(end, currentRowOffset);
+
+				return { ...cell, ref: `${shiftedStart}:${shiftedEnd}` };
+			});
+
+			allRows.push(...shiftedRows);
+			allMergeCells.push(...shiftedMergeCells);
+			currentRowOffset += Utils.Common.getMaxRowNumber(rows) + gap;
+		}
+
+		const mergedXml = Xml.buildMergedSheet(
+			xml,
+			allRows,
+			allMergeCells,
+		);
+
+		this.#set(fileKey, mergedXml);
+	}
+
+	/**
+	 * Removes sheets from the workbook.
+	 *
+	 * @param {Object} data - The data for sheet removal.
+	 * @param {number[]} [data.sheetIndexes] - The 1-based indexes of the sheets to remove.
+	 * @param {string[]} [data.sheetNames] - The names of the sheets to remove.
+	 * @returns {void}
+	 *
+	 * @throws {Error} If the template instance has been destroyed.
+	 * @throws {Error} If the sheet does not exist.
+	 * @experimental This API is experimental and might change in future versions.
+	 */
+	#removeSheets(data: {
+		sheetNames?: string[];
+		sheetIndexes?: number[];
+	}): void {
+		const { sheetIndexes = [], sheetNames = [] } = data;
+
+		for (const sheetIndex of sheetIndexes) {
+			const sheetPath = `xl/worksheets/sheet${sheetIndex}.xml`;
+
+			if (!this.files[sheetPath]) {
+				continue;
+			}
+
+			delete this.files[sheetPath];
+
+			if (this.files["xl/workbook.xml"]) {
+				this.files["xl/workbook.xml"] = Buffer.from(Utils.Common.removeSheetFromWorkbook(
+					this.files["xl/workbook.xml"].toString(),
+					sheetIndex,
+				));
+			}
+
+			if (this.files["xl/_rels/workbook.xml.rels"]) {
+				this.files["xl/_rels/workbook.xml.rels"] = Buffer.from(Utils.Common.removeSheetFromRels(
+					this.files["xl/_rels/workbook.xml.rels"].toString(),
+					sheetIndex,
+				));
+			}
+
+			if (this.files["[Content_Types].xml"]) {
+				this.files["[Content_Types].xml"] = Buffer.from(Utils.Common.removeSheetFromContentTypes(
+					this.files["[Content_Types].xml"].toString(),
+					sheetIndex,
+				));
+			}
+		}
+
+		for (const sheetName of sheetNames) {
+			Utils.Common.removeSheetByName(this.files, sheetName);
+		}
+	}
+
+	/**
 	 * Copies a sheet from the template to a new name.
 	 *
 	 * @param {string} sourceName - The name of the sheet to copy.
@@ -209,7 +472,7 @@ export class TemplateMemory {
 			// Read workbook.xml and find the source sheet
 			const workbookXmlPath = "xl/workbook.xml";
 
-			const workbookXml = this.#getXml(workbookXmlPath);
+			const workbookXml = this.#extractXmlFromSheet(workbookXmlPath);
 
 			// Find the source sheet
 			const sheetRegex = new RegExp(`<sheet[^>]+name="${sourceName}"[^>]+r:id="([^"]+)"[^>]*/>`);
@@ -226,7 +489,7 @@ export class TemplateMemory {
 			// Read workbook.rels
 			// Find the source sheet path by rId
 			const relsXmlPath = "xl/_rels/workbook.xml.rels";
-			const relsXml = this.#getXml(relsXmlPath);
+			const relsXml = this.#extractXmlFromSheet(relsXmlPath);
 			const relRegex = new RegExp(`<Relationship[^>]+Id="${sourceRId}"[^>]+Target="([^"]+)"[^>]*/>`);
 			const relMatch = relsXml.match(relRegex);
 			if (!relMatch) throw new Error(`Relationship "${sourceRId}" not found`);
@@ -288,7 +551,7 @@ export class TemplateMemory {
 			// Read [Content_Types].xml
 			// Update [Content_Types].xml
 			const contentTypesPath = "[Content_Types].xml";
-			const contentTypesXml = this.#getXml(contentTypesPath);
+			const contentTypesXml = this.#extractXmlFromSheet(contentTypesPath);
 			const overrideTag = `<Override PartName="/xl/worksheets/${newSheetFilename}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`;
 			const updatedContentTypesXml = contentTypesXml.replace(
 				"</Types>",
@@ -360,7 +623,7 @@ export class TemplateMemory {
 			Utils.checkRows(preparedRows);
 
 			// Find the sheet
-			const workbookXml = this.#getXml("xl/workbook.xml");
+			const workbookXml = this.#extractXmlFromSheet("xl/workbook.xml");
 			const sheetMatch = workbookXml.match(new RegExp(`<sheet[^>]+name="${sheetName}"[^>]+r:id="([^"]+)"[^>]*/>`));
 
 			if (!sheetMatch || !sheetMatch[1]) {
@@ -368,7 +631,7 @@ export class TemplateMemory {
 			}
 
 			const rId = sheetMatch[1];
-			const relsXml = this.#getXml("xl/_rels/workbook.xml.rels");
+			const relsXml = this.#extractXmlFromSheet("xl/_rels/workbook.xml.rels");
 			const relMatch = relsXml.match(new RegExp(`<Relationship[^>]+Id="${rId}"[^>]+Target="([^"]+)"[^>]*/>`));
 
 			if (!relMatch || !relMatch[1]) {
@@ -376,7 +639,7 @@ export class TemplateMemory {
 			}
 
 			const sheetPath = "xl/" + relMatch[1].replace(/^\/?xl\//, "");
-			const sheetXml = this.#getXml(sheetPath);
+			const sheetXml = this.#extractXmlFromSheet(sheetPath);
 
 			let nextRow = 0;
 
@@ -425,6 +688,20 @@ export class TemplateMemory {
 		}
 	}
 
+	/**
+	 * Inserts rows into a specific sheet in the template using an async stream.
+	 *
+	 * @param {Object} data - The data for row insertion.
+	 * @param {string} data.sheetName - The name of the sheet to insert rows into.
+	 * @param {number} [data.startRowNumber] - The row number to start inserting from.
+	 * @param {AsyncIterable<unknown[]>} data.rows - Async iterable of rows to insert.
+	 * @returns {Promise<void>}
+	 * @throws {Error} If the template instance has been destroyed.
+	 * @throws {Error} If the sheet does not exist.
+	 * @throws {Error} If the row number is out of range.
+	 * @throws {Error} If a column is out of range.
+	 * @experimental This API is experimental and might change in future versions.
+	 */
 	async insertRowsStream(data: {
 		sheetName: string;
 		startRowNumber?: number;
@@ -439,17 +716,17 @@ export class TemplateMemory {
 			const { rows, sheetName, startRowNumber } = data;
 			if (!sheetName) throw new Error("Sheet name is required");
 
-			const workbookXml = this.#getXml("xl/workbook.xml");
+			const workbookXml = this.#extractXmlFromSheet("xl/workbook.xml");
 			const sheetMatch = workbookXml.match(new RegExp(`<sheet[^>]+name="${sheetName}"[^>]+r:id="([^"]+)"[^>]*/>`));
 			if (!sheetMatch) throw new Error(`Sheet "${sheetName}" not found`);
 
 			const rId = sheetMatch[1];
-			const relsXml = this.#getXml("xl/_rels/workbook.xml.rels");
+			const relsXml = this.#extractXmlFromSheet("xl/_rels/workbook.xml.rels");
 			const relMatch = relsXml.match(new RegExp(`<Relationship[^>]+Id="${rId}"[^>]+Target="([^"]+)"[^>]*/>`));
 			if (!relMatch || !relMatch[1]) throw new Error(`Relationship "${rId}" not found`);
 
 			const sheetPath = "xl/" + relMatch[1].replace(/^\/?xl\//, "");
-			const sheetXml = this.#getXml(sheetPath);
+			const sheetXml = this.#extractXmlFromSheet(sheetPath);
 
 			const output = new MemoryWriteStream();
 
@@ -609,6 +886,67 @@ export class TemplateMemory {
 		}
 	}
 
+	/**
+	 * Merges sheets into a base sheet.
+	 *
+	 * @param {Object} data
+	 * @param {{ sheetIndexes?: number[]; sheetNames?: string[] }} data.additions - The sheets to merge.
+	 * @param {number} [data.baseSheetIndex=1] - The 1-based index of the sheet to merge into.
+	 * @param {string} [data.baseSheetName] - The name of the sheet to merge into.
+	 * @param {number} [data.gap=0] - The number of empty rows to insert between each added section.
+	 * @returns {void}
+	 */
+	mergeSheets(data: {
+		additions: { sheetIndexes?: number[]; sheetNames?: string[] };
+		baseSheetIndex?: number;
+		baseSheetName?: string;
+		gap?: number;
+	}): void {
+		this.#ensureNotProcessing();
+		this.#ensureNotDestroyed();
+
+		this.#isProcessing = true;
+
+		try {
+			this.#mergeSheets(data);
+		} finally {
+			this.#isProcessing = false;
+		}
+	}
+
+	/**
+	 * Removes sheets from the workbook.
+	 *
+	 * @param {Object} data
+	 * @param {number[]} [data.sheetIndexes] - The 1-based indexes of the sheets to remove.
+	 * @param {string[]} [data.sheetNames] - The names of the sheets to remove.
+	 * @returns {void}
+	 */
+	removeSheets(data: {
+		sheetNames?: string[];
+		sheetIndexes?: number[];
+	}): void {
+		this.#ensureNotProcessing();
+		this.#ensureNotDestroyed();
+
+		this.#isProcessing = true;
+
+		try {
+			this.#removeSheets(data);
+		} finally {
+			this.#isProcessing = false;
+		}
+	}
+
+	/**
+	 * Creates a Template instance from an Excel file source.
+	 *
+	 * @param {Object} data - The data to create the template from.
+	 * @param {string | Buffer} data.source - The path or buffer of the Excel file.
+	 * @returns {Promise<TemplateMemory>} A new Template instance.
+	 * @throws {Error} If reading the file fails.
+	 * @experimental This API is experimental and might change in future versions.
+	 */
 	static async from(data: {
 		source: string | Buffer;
 	}): Promise<TemplateMemory> {

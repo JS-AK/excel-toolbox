@@ -20,7 +20,7 @@ new TemplateFs(fileKeys: Set<string>, destination: string)
 
 ---
 
-### 📄 Properties
+## 📄 Properties
 
 - `fileKeys: Set<string>` — the set of template file paths involved in final assembly.
 - `destination: string` — the working directory where files are extracted and edited.
@@ -28,9 +28,9 @@ new TemplateFs(fileKeys: Set<string>, destination: string)
 
 ---
 
-### 📚 Methods
+## 📚 Methods
 
-#### `copySheet(sourceName: string, newName: string): Promise<void>`
+### `copySheet(sourceName: string, newName: string): Promise<void>`
 
 Creates a copy of an existing worksheet with a new name.
 
@@ -42,7 +42,7 @@ Creates a copy of an existing worksheet with a new name.
 
 ---
 
-#### `substitute(sheetName: string, replacements: Record<string, unknown>): Promise<void>`
+### `substitute(sheetName: string, replacements: Record<string, unknown>): Promise<void>`
 
 Replaces placeholders of the form `${key}` with values from the `replacements` object. For arrays use placeholders with key `${table:key}`
 
@@ -51,7 +51,7 @@ Replaces placeholders of the form `${key}` with values from the `replacements` o
 
 ---
 
-#### `insertRows(data: { sheetName: string; startRowNumber?: number; rows: unknown[][] }): Promise<void>`
+### `insertRows(data: { sheetName: string; startRowNumber?: number; rows: unknown[][] }): Promise<void>`
 
 Inserts rows into a specified worksheet.
 
@@ -65,7 +65,7 @@ Inserts rows into a specified worksheet.
 
 ---
 
-#### `insertRowsStream(data: { sheetName: string; startRowNumber?: number; rows: AsyncIterable<unknown[]> }): Promise<void>`
+### `insertRowsStream(data: { sheetName: string; startRowNumber?: number; rows: AsyncIterable<unknown[]> }): Promise<void>`
 
 Streams and inserts rows into a worksheet, useful for handling large datasets.
 
@@ -76,18 +76,7 @@ Streams and inserts rows into a worksheet, useful for handling large datasets.
 
 ---
 
-#### `validate(): Promise<void>`
-
-Validates the template by checking all required files exist.
-
-- Returns: `Promise<void>`
-- Throws:
-  - If the template instance has been destroyed.
-  - If any required files are missing.
-
----
-
-#### `save(): Promise<Buffer>`
+### `save(): Promise<Buffer>`
 
 Generates a new Excel file and returns it as a `Buffer`.
 
@@ -98,7 +87,7 @@ Generates a new Excel file and returns it as a `Buffer`.
 
 ---
 
-#### `saveStream(output: Writable): Promise<void>`
+### `saveStream(output: Writable): Promise<void>`
 
 Writes the resulting Excel file to a writable stream.
 
@@ -109,9 +98,34 @@ Writes the resulting Excel file to a writable stream.
 
 ---
 
-### 💡 Usage Examples
+### `validate(): Promise<void>`
 
-#### Insert Rows from a Stream and Save to File Stream
+Validates the template by checking all required files exist.
+
+- Returns: `Promise<void>`
+- Throws:
+  - If the template instance has been destroyed.
+  - If any required files are missing.
+
+---
+
+### `set(key: string, content: Buffer | string): Promise<void>`
+
+Replaces the contents of a file in the template.
+
+- `key` — the relative path of the file within the Excel package (e.g., `xl/worksheets/sheet1.xml`).
+- `content` — the new file content as a `Buffer` or `string`.
+
+- Returns: `Promise<void>`
+- Throws:
+  - If the template instance has been destroyed.
+  - If the file does not exist in the template.
+
+---
+
+## 💡 Usage Examples
+
+### Insert Rows from a Stream and Save to File Stream
 
 ```ts
 async function* asyncRowsGenerator(count: number): AsyncIterable<unknown[]> {
@@ -141,7 +155,7 @@ const outputStream = fs.createWriteStream(
 await template.saveStream(outputStream);
 ```
 
-#### Insert Rows from a Stream and Save to Buffer
+### Insert Rows from a Stream and Save to Buffer
 
 ```ts
 const template = await TemplateFs.from({
@@ -164,7 +178,7 @@ fs.writeFileSync(
 );
 ```
 
-#### Copy Sheet and Apply Substitutions
+### Copy Sheet and Apply Substitutions
 
 ```ts
 const template = await TemplateFs.from({
@@ -196,7 +210,7 @@ await template.saveStream(outputStream);
 
 ---
 
-### 🛑 Internal Checks
+## 🛑 Internal Checks
 
 Methods perform validation:
 
