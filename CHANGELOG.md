@@ -1,3 +1,15 @@
+# [1.6.0](https://github.com/JS-AK/excel-toolbox/compare/v1.5.0...v1.6.0) (2025-04-26)
+
+
+### Bug Fixes
+
+* refactor templates added tests ([a7c380c](https://github.com/JS-AK/excel-toolbox/commit/a7c380ce8299f0b67084b646ea5a972eed0cf56a))
+
+
+### Features
+
+* updated TemplateMemory ([0738ca9](https://github.com/JS-AK/excel-toolbox/commit/0738ca9f089a5ecdf748ebe82795623e250af17e))
+
 # [1.5.0](https://github.com/JS-AK/excel-toolbox/compare/v1.4.1...v1.5.0) (2025-04-23)
 
 
