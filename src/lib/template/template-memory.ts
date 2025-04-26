@@ -27,6 +27,17 @@ export class TemplateMemory {
 	#isProcessing: boolean = false;
 
 	/**
+ * The keys for the Excel files in the template.
+ */
+	#excelKeys = {
+		contentTypes: "[Content_Types].xml",
+		sharedStrings: "xl/sharedStrings.xml",
+		styles: "xl/styles.xml",
+		workbook: "xl/workbook.xml",
+		workbookRels: "xl/_rels/workbook.xml.rels",
+	} as const;
+
+	/**
 	 * Creates a Template instance from a map of file paths to buffers.
 	 *
 	 * @param {Object<string, Buffer>} files - The files to create the template from.
@@ -163,24 +174,22 @@ export class TemplateMemory {
 	 */
 	#getSheetPathByName(sheetName: string): string {
 		// Find the sheet
-		const workbookXml = this.#extractXmlFromSheet("xl/workbook.xml");
-		const sheetMatch = workbookXml.match(new RegExp(`<sheet[^>]+name="${sheetName}"[^>]+r:id="([^"]+)"[^>]*/>`));
+		const workbookXml = this.#extractXmlFromSheet(this.#excelKeys.workbook);
+		const sheetMatch = workbookXml.match(Utils.sheetMatch(sheetName));
 
 		if (!sheetMatch || !sheetMatch[1]) {
 			throw new Error(`Sheet "${sheetName}" not found`);
 		}
 
 		const rId = sheetMatch[1];
-		const relsXml = this.#extractXmlFromSheet("xl/_rels/workbook.xml.rels");
-		const relMatch = relsXml.match(new RegExp(`<Relationship[^>]+Id="${rId}"[^>]+Target="([^"]+)"[^>]*/>`));
+		const relsXml = this.#extractXmlFromSheet(this.#excelKeys.workbookRels);
+		const relMatch = relsXml.match(Utils.relationshipMatch(rId));
 
 		if (!relMatch || !relMatch[1]) {
 			throw new Error(`Relationship "${rId}" not found`);
 		}
 
-		const sheetPath = "xl/" + relMatch[1].replace(/^\/?xl\//, "");
-
-		return sheetPath;
+		return "xl/" + relMatch[1].replace(/^\/?xl\//, "");
 	}
 
 	/**
@@ -196,30 +205,7 @@ export class TemplateMemory {
 			throw new Error("Sheet index must be greater than 0");
 		}
 
-		return "xl/worksheets/sheet" + id + ".xml";
-	}
-
-	/**
-	 * Get the path of the sheet with the given name inside the workbook.
-	 * @param sheetName The name of the sheet to find.
-	 * @returns The path of the sheet inside the workbook.
-	 * @throws {Error} If the sheet is not found.
-	 */
-	async #getSheetPath(sheetName: string): Promise<string> {
-		// Read XML workbook to find sheet name and path
-		const workbookXml = this.#extractXmlFromSheet("xl/workbook.xml");
-		const sheetMatch = workbookXml.match(new RegExp(`<sheet[^>]+name="${sheetName}"[^>]+r:id="([^"]+)"[^>]*/>`));
-
-		if (!sheetMatch) throw new Error(`Sheet "${sheetName}" not found`);
-
-		const rId = sheetMatch[1];
-
-		const relsXml = this.#extractXmlFromSheet("xl/_rels/workbook.xml.rels");
-		const relMatch = relsXml.match(new RegExp(`<Relationship[^>]+Id="${rId}"[^>]+Target="([^"]+)"[^>]*/>`));
-
-		if (!relMatch) throw new Error(`Relationship "${rId}" not found`);
-
-		return "xl/" + relMatch[1]!.replace(/^\/?xl\//, "");
+		return `xl/worksheets/sheet${id}.xml`;
 	}
 
 	/**
@@ -251,8 +237,7 @@ export class TemplateMemory {
 	 * @experimental This API is experimental and might change in future versions.
 	 */
 	async #substitute(sheetName: string, replacements: Record<string, unknown>): Promise<void> {
-		const sharedStringsPath = "xl/sharedStrings.xml";
-		const sheetPath = await this.#getSheetPath(sheetName);
+		const sharedStringsPath = this.#excelKeys.sharedStrings;
 
 		let sharedStringsContent = "";
 		let sheetContent = "";
@@ -260,6 +245,8 @@ export class TemplateMemory {
 		if (this.files[sharedStringsPath]) {
 			sharedStringsContent = this.#extractXmlFromSheet(sharedStringsPath);
 		}
+
+		const sheetPath = this.#getSheetPathByName(sheetName);
 
 		if (this.files[sheetPath]) {
 			sheetContent = this.#extractXmlFromSheet(sheetPath);
@@ -469,17 +456,20 @@ export class TemplateMemory {
 		this.#isProcessing = true;
 
 		try {
-			// Read workbook.xml and find the source sheet
-			const workbookXmlPath = "xl/workbook.xml";
+			if (sourceName === newName) {
+				throw new Error("Source and new sheet names cannot be the same");
+			}
 
-			const workbookXml = this.#extractXmlFromSheet(workbookXmlPath);
+			// Read workbook.xml and find the source sheet
+			const workbookXmlPath = this.#excelKeys.workbook;
+			const workbookXml = this.#extractXmlFromSheet(this.#excelKeys.workbook);
 
 			// Find the source sheet
-			const sheetRegex = new RegExp(`<sheet[^>]+name="${sourceName}"[^>]+r:id="([^"]+)"[^>]*/>`);
-			const sheetMatch = workbookXml.match(sheetRegex);
-			if (!sheetMatch) throw new Error(`Sheet "${sourceName}" not found`);
+			const sheetMatch = workbookXml.match(Utils.sheetMatch(sourceName));
 
-			const sourceRId = sheetMatch[1];
+			if (!sheetMatch || !sheetMatch[1]) {
+				throw new Error(`Sheet "${sourceName}" not found`);
+			}
 
 			// Check if a sheet with the new name already exists
 			if (new RegExp(`<sheet[^>]+name="${newName}"`).test(workbookXml)) {
@@ -488,16 +478,16 @@ export class TemplateMemory {
 
 			// Read workbook.rels
 			// Find the source sheet path by rId
-			const relsXmlPath = "xl/_rels/workbook.xml.rels";
-			const relsXml = this.#extractXmlFromSheet(relsXmlPath);
-			const relRegex = new RegExp(`<Relationship[^>]+Id="${sourceRId}"[^>]+Target="([^"]+)"[^>]*/>`);
-			const relMatch = relsXml.match(relRegex);
-			if (!relMatch) throw new Error(`Relationship "${sourceRId}" not found`);
+			const rId = sheetMatch[1];
+			const relsXmlPath = this.#excelKeys.workbookRels;
+			const relsXml = this.#extractXmlFromSheet(this.#excelKeys.workbookRels);
+			const relMatch = relsXml.match(Utils.relationshipMatch(rId));
+
+			if (!relMatch || !relMatch[1]) {
+				throw new Error(`Relationship "${rId}" not found`);
+			}
 
 			const sourceTarget = relMatch[1]; // sheetN.xml
-
-			if (!sourceTarget) throw new Error(`Relationship "${sourceRId}" not found`);
-
 			const sourceSheetPath = "xl/" + sourceTarget.replace(/^\/?.*xl\//, "");
 
 			// Get the index of the new sheet
@@ -623,22 +613,7 @@ export class TemplateMemory {
 			Utils.checkRows(preparedRows);
 
 			// Find the sheet
-			const workbookXml = this.#extractXmlFromSheet("xl/workbook.xml");
-			const sheetMatch = workbookXml.match(new RegExp(`<sheet[^>]+name="${sheetName}"[^>]+r:id="([^"]+)"[^>]*/>`));
-
-			if (!sheetMatch || !sheetMatch[1]) {
-				throw new Error(`Sheet "${sheetName}" not found`);
-			}
-
-			const rId = sheetMatch[1];
-			const relsXml = this.#extractXmlFromSheet("xl/_rels/workbook.xml.rels");
-			const relMatch = relsXml.match(new RegExp(`<Relationship[^>]+Id="${rId}"[^>]+Target="([^"]+)"[^>]*/>`));
-
-			if (!relMatch || !relMatch[1]) {
-				throw new Error(`Relationship "${rId}" not found`);
-			}
-
-			const sheetPath = "xl/" + relMatch[1].replace(/^\/?xl\//, "");
+			const sheetPath = this.#getSheetPathByName(sheetName);
 			const sheetXml = this.#extractXmlFromSheet(sheetPath);
 
 			let nextRow = 0;
@@ -714,18 +689,11 @@ export class TemplateMemory {
 
 		try {
 			const { rows, sheetName, startRowNumber } = data;
+
 			if (!sheetName) throw new Error("Sheet name is required");
 
-			const workbookXml = this.#extractXmlFromSheet("xl/workbook.xml");
-			const sheetMatch = workbookXml.match(new RegExp(`<sheet[^>]+name="${sheetName}"[^>]+r:id="([^"]+)"[^>]*/>`));
-			if (!sheetMatch) throw new Error(`Sheet "${sheetName}" not found`);
-
-			const rId = sheetMatch[1];
-			const relsXml = this.#extractXmlFromSheet("xl/_rels/workbook.xml.rels");
-			const relMatch = relsXml.match(new RegExp(`<Relationship[^>]+Id="${rId}"[^>]+Target="([^"]+)"[^>]*/>`));
-			if (!relMatch || !relMatch[1]) throw new Error(`Relationship "${rId}" not found`);
-
-			const sheetPath = "xl/" + relMatch[1].replace(/^\/?xl\//, "");
+			// Read XML workbook to find sheet name and path
+			const sheetPath = this.#getSheetPathByName(sheetName);
 			const sheetXml = this.#extractXmlFromSheet(sheetPath);
 
 			const output = new MemoryWriteStream();
@@ -823,7 +791,7 @@ export class TemplateMemory {
 
 			if (!inserted) throw new Error("Failed to locate <sheetData> for insertion");
 
-			// ← теперь мы не собираем строку, а собираем Buffer
+			// Save the buffer to the sheet
 			this.files[sheetPath] = output.toBuffer();
 
 		} finally {
@@ -849,15 +817,14 @@ export class TemplateMemory {
 
 			this.destroyed = true;
 
-			// Очистка всех буферов
+			// Clear all buffers
 			for (const key in this.files) {
 				if (this.files.hasOwnProperty(key)) {
-					this.files[key] = Buffer.alloc(0); // Заменяем на пустой буфер
+					this.files[key] = Buffer.alloc(0); // Clear the buffer
 				}
 			}
 
 			return zipBuffer;
-
 		} finally {
 			this.#isProcessing = false;
 		}

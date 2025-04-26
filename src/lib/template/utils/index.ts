@@ -16,6 +16,7 @@ export * from "./process-merge-cells.js";
 export * from "./process-merge-finalize.js";
 export * from "./process-rows.js";
 export * from "./process-shared-strings.js";
+export * from "./regexp.js";
 export * from "./to-excel-column-object.js";
 export * from "./update-dimension.js";
 export * from "./validate-worksheet-xml.js";

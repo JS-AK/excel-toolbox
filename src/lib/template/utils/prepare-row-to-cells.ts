@@ -7,6 +7,10 @@ export function prepareRowToCells(row: unknown[], rowNumber: number) {
 		const cellRef = `${colLetter}${rowNumber}`;
 		const cellValue = escapeXml(String(value ?? ""));
 
-		return `<c r="${cellRef}" t="inlineStr"><is><t>${cellValue}</t></is></c>`;
+		return {
+			cellRef,
+			cellValue,
+			cellXml: `<c r="${cellRef}" t="inlineStr"><is><t>${cellValue}</t></is></c>`,
+		};
 	});
 }
