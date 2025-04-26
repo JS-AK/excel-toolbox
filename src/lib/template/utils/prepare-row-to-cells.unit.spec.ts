@@ -7,7 +7,7 @@ describe("prepareRowToCells", () => {
 		const row = ["Text", 42, true];
 		const result = prepareRowToCells(row, 1);
 
-		expect(result).toEqual([
+		expect(result.map(c => c.cellXml)).toEqual([
 			"<c r=\"A1\" t=\"inlineStr\"><is><t>Text</t></is></c>",
 			"<c r=\"B1\" t=\"inlineStr\"><is><t>42</t></is></c>",
 			"<c r=\"C1\" t=\"inlineStr\"><is><t>true</t></is></c>",
@@ -18,7 +18,7 @@ describe("prepareRowToCells", () => {
 		const row = [null, undefined, ""];
 		const result = prepareRowToCells(row, 2);
 
-		expect(result).toEqual([
+		expect(result.map(c => c.cellXml)).toEqual([
 			"<c r=\"A2\" t=\"inlineStr\"><is><t></t></is></c>",
 			"<c r=\"B2\" t=\"inlineStr\"><is><t></t></is></c>",
 			"<c r=\"C2\" t=\"inlineStr\"><is><t></t></is></c>",
@@ -29,7 +29,7 @@ describe("prepareRowToCells", () => {
 		const row = ["<tag>", "&entity", "\"quote\"", "'apos'"];
 		const result = prepareRowToCells(row, 3);
 
-		expect(result).toEqual([
+		expect(result.map(c => c.cellXml)).toEqual([
 			"<c r=\"A3\" t=\"inlineStr\"><is><t>&lt;tag&gt;</t></is></c>",
 			"<c r=\"B3\" t=\"inlineStr\"><is><t>&amp;entity</t></is></c>",
 			"<c r=\"C3\" t=\"inlineStr\"><is><t>&quot;quote&quot;</t></is></c>",
@@ -41,7 +41,7 @@ describe("prepareRowToCells", () => {
 		const row = ["Value"];
 		const result = prepareRowToCells(row, 1048576);
 
-		expect(result).toEqual([
+		expect(result.map(c => c.cellXml)).toEqual([
 			"<c r=\"A1048576\" t=\"inlineStr\"><is><t>Value</t></is></c>",
 		]);
 	});
@@ -51,18 +51,18 @@ describe("prepareRowToCells", () => {
 		const result = prepareRowToCells(row, 1);
 
 		expect(result.length).toBe(100);
-		expect(result[0]).toContain("A1");
-		expect(result[99]).toContain("CV1"); // 100th column
+		expect(result[0].cellRef).toBe("A1");
+		expect(result[99].cellRef).toBe("CV1"); // 100th column
 	});
 
 	it("should maintain column order", () => {
 		const row = ["A", "B", "C", "D"];
 		const result = prepareRowToCells(row, 5);
 
-		expect(result[0]).toContain("A5");
-		expect(result[1]).toContain("B5");
-		expect(result[2]).toContain("C5");
-		expect(result[3]).toContain("D5");
+		expect(result[0].cellRef).toBe("A5");
+		expect(result[1].cellRef).toBe("B5");
+		expect(result[2].cellRef).toBe("C5");
+		expect(result[3].cellRef).toBe("D5");
 	});
 
 	it("should handle objects with toString()", () => {
@@ -72,6 +72,7 @@ describe("prepareRowToCells", () => {
 		const row = [obj];
 		const result = prepareRowToCells(row, 1);
 
-		expect(result[0]).toContain("object content");
+		expect(result[0].cellValue).toBe("object content");
+		expect(result[0].cellXml).toContain("object content");
 	});
 });

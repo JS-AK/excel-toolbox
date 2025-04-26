@@ -3,6 +3,7 @@ import * as fsSync from "node:fs";
 import * as path from "node:path";
 import * as readline from "node:readline";
 import { Writable } from "node:stream";
+import crypto from "node:crypto";
 
 import * as Xml from "../xml/index.js";
 import * as Zip from "../zip/index.js";
@@ -38,6 +39,17 @@ export class TemplateFs {
 	 * @type {boolean}
 	 */
 	#isProcessing: boolean = false;
+
+	/**
+	 * The keys for the Excel files in the template.
+	 */
+	#excelKeys = {
+		contentTypes: "[Content_Types].xml",
+		sharedStrings: "xl/sharedStrings.xml",
+		styles: "xl/styles.xml",
+		workbook: "xl/workbook.xml",
+		workbookRels: "xl/_rels/workbook.xml.rels",
+	} as const;
 
 	/**
 	 * Creates a Template instance.
@@ -142,20 +154,24 @@ export class TemplateFs {
 	 * @returns The path of the sheet inside the workbook.
 	 * @throws {Error} If the sheet is not found.
 	 */
-	async #getSheetPath(sheetName: string): Promise<string> {
+	async #getSheetPathByName(sheetName: string): Promise<string> {
 		// Read XML workbook to find sheet name and path
-		const workbookXml = Xml.extractXmlFromSheet(await this.#readFile("xl/workbook.xml"));
-		const sheetMatch = workbookXml.match(new RegExp(`<sheet[^>]+name="${sheetName}"[^>]+r:id="([^"]+)"[^>]*/>`));
+		const workbookXml = Xml.extractXmlFromSheet(await this.#readFile(this.#excelKeys.workbook));
+		const sheetMatch = workbookXml.match(Utils.sheetMatch(sheetName));
 
-		if (!sheetMatch) throw new Error(`Sheet "${sheetName}" not found`);
+		if (!sheetMatch || !sheetMatch[1]) {
+			throw new Error(`Sheet "${sheetName}" not found`);
+		}
 
 		const rId = sheetMatch[1];
-		const relsXml = Xml.extractXmlFromSheet(await this.#readFile("xl/_rels/workbook.xml.rels"));
-		const relMatch = relsXml.match(new RegExp(`<Relationship[^>]+Id="${rId}"[^>]+Target="([^"]+)"[^>]*/>`));
+		const relsXml = Xml.extractXmlFromSheet(await this.#readFile(this.#excelKeys.workbookRels));
+		const relMatch = relsXml.match(Utils.relationshipMatch(rId));
 
-		if (!relMatch) throw new Error(`Relationship "${rId}" not found`);
+		if (!relMatch || !relMatch[1]) {
+			throw new Error(`Relationship "${rId}" not found`);
+		}
 
-		return "xl/" + relMatch[1]!.replace(/^\/?xl\//, "");
+		return "xl/" + relMatch[1].replace(/^\/?xl\//, "");
 	}
 
 	/**
@@ -215,8 +231,8 @@ export class TemplateFs {
 	}
 
 	async #substitute(sheetName: string, replacements: Record<string, unknown>): Promise<void> {
-		const sharedStringsPath = "xl/sharedStrings.xml";
-		const sheetPath = await this.#getSheetPath(sheetName);
+		const sharedStringsPath = this.#excelKeys.sharedStrings;
+		const sheetPath = await this.#getSheetPathByName(sheetName);
 
 		let sharedStringsContent = "";
 		let sheetContent = "";
@@ -287,16 +303,20 @@ export class TemplateFs {
 		this.#isProcessing = true;
 
 		try {
+			if (sourceName === newName) {
+				throw new Error("Source and new sheet names cannot be the same");
+			}
+
 			// Read workbook.xml and find the source sheet
-			const workbookXmlPath = "xl/workbook.xml";
+			const workbookXmlPath = this.#excelKeys.workbook;
 			const workbookXml = Xml.extractXmlFromSheet(await this.#readFile(workbookXmlPath));
 
 			// Find the source sheet
-			const sheetRegex = new RegExp(`<sheet[^>]+name="${sourceName}"[^>]+r:id="([^"]+)"[^>]*/>`);
-			const sheetMatch = workbookXml.match(sheetRegex);
-			if (!sheetMatch) throw new Error(`Sheet "${sourceName}" not found`);
+			const sheetMatch = workbookXml.match(Utils.sheetMatch(sourceName));
 
-			const sourceRId = sheetMatch[1];
+			if (!sheetMatch || !sheetMatch[1]) {
+				throw new Error(`Sheet "${sourceName}" not found`);
+			}
 
 			// Check if a sheet with the new name already exists
 			if (new RegExp(`<sheet[^>]+name="${newName}"`).test(workbookXml)) {
@@ -305,16 +325,16 @@ export class TemplateFs {
 
 			// Read workbook.rels
 			// Find the source sheet path by rId
-			const relsXmlPath = "xl/_rels/workbook.xml.rels";
+			const rId = sheetMatch[1];
+			const relsXmlPath = this.#excelKeys.workbookRels;
 			const relsXml = Xml.extractXmlFromSheet(await this.#readFile(relsXmlPath));
-			const relRegex = new RegExp(`<Relationship[^>]+Id="${sourceRId}"[^>]+Target="([^"]+)"[^>]*/>`);
-			const relMatch = relsXml.match(relRegex);
-			if (!relMatch) throw new Error(`Relationship "${sourceRId}" not found`);
+			const relMatch = relsXml.match(Utils.relationshipMatch(rId));
+
+			if (!relMatch || !relMatch[1]) {
+				throw new Error(`Relationship "${rId}" not found`);
+			}
 
 			const sourceTarget = relMatch[1]; // sheetN.xml
-
-			if (!sourceTarget) throw new Error(`Relationship "${sourceRId}" not found`);
-
 			const sourceSheetPath = "xl/" + sourceTarget.replace(/^\/?.*xl\//, "");
 
 			// Get the index of the new sheet
@@ -355,7 +375,7 @@ export class TemplateFs {
 
 			// Read [Content_Types].xml
 			// Update [Content_Types].xml
-			const contentTypesPath = "[Content_Types].xml";
+			const contentTypesPath = this.#excelKeys.contentTypes;
 			const contentTypesXml = Xml.extractXmlFromSheet(await this.#readFile(contentTypesPath));
 			const overrideTag = `<Override PartName="/xl/worksheets/${newSheetFilename}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`;
 			const updatedContentTypesXml = contentTypesXml.replace(
@@ -428,22 +448,8 @@ export class TemplateFs {
 			Utils.checkRows(preparedRows);
 
 			// Find the sheet
-			const workbookXml = Xml.extractXmlFromSheet(await this.#readFile("xl/workbook.xml"));
-			const sheetMatch = workbookXml.match(new RegExp(`<sheet[^>]+name="${sheetName}"[^>]+r:id="([^"]+)"[^>]*/>`));
+			const sheetPath = await this.#getSheetPathByName(sheetName);
 
-			if (!sheetMatch || !sheetMatch[1]) {
-				throw new Error(`Sheet "${sheetName}" not found`);
-			}
-
-			const rId = sheetMatch[1];
-			const relsXml = Xml.extractXmlFromSheet(await this.#readFile("xl/_rels/workbook.xml.rels"));
-			const relMatch = relsXml.match(new RegExp(`<Relationship[^>]+Id="${rId}"[^>]+Target="([^"]+)"[^>]*/>`));
-
-			if (!relMatch || !relMatch[1]) {
-				throw new Error(`Relationship "${rId}" not found`);
-			}
-
-			const sheetPath = "xl/" + relMatch[1].replace(/^\/?xl\//, "");
 			const sheetXmlRaw = await this.#readFile(sheetPath);
 			const sheetXml = Xml.extractXmlFromSheet(sheetXmlRaw);
 
@@ -488,7 +494,7 @@ export class TemplateFs {
 				updatedXml = sheetXml.replace(/<worksheet[^>]*>/, (match) => `${match}<sheetData>${rowsXml}</sheetData>`);
 			}
 
-			await this.#set(sheetPath, updatedXml);
+			await this.#set(sheetPath, Utils.updateDimension(updatedXml));
 		} finally {
 			this.#isProcessing = false;
 		}
@@ -523,20 +529,8 @@ export class TemplateFs {
 
 			if (!sheetName) throw new Error("Sheet name is required");
 
-			// Read XML workbook to find sheet name and path
-			const workbookXml = Xml.extractXmlFromSheet(await this.#readFile("xl/workbook.xml"));
-			const sheetMatch = workbookXml.match(new RegExp(`<sheet[^>]+name="${sheetName}"[^>]+r:id="([^"]+)"[^>]*/>`));
-
-			if (!sheetMatch) throw new Error(`Sheet "${sheetName}" not found`);
-
-			const rId = sheetMatch[1];
-			const relsXml = Xml.extractXmlFromSheet(await this.#readFile("xl/_rels/workbook.xml.rels"));
-			const relMatch = relsXml.match(new RegExp(`<Relationship[^>]+Id="${rId}"[^>]+Target="([^"]+)"[^>]*/>`));
-
-			if (!relMatch) throw new Error(`Relationship "${rId}" not found`);
-
-			// Path to the desired sheet (sheet1.xml)
-			const sheetPath = "xl/" + relMatch[1]!.replace(/^\/?xl\//, "");
+			// Get the path to the sheet
+			const sheetPath = await this.#getSheetPathByName(sheetName);
 
 			// The temporary file for writing
 			const fullPath = path.join(this.destination, ...sheetPath.split("/"));
@@ -549,6 +543,15 @@ export class TemplateFs {
 			// Inserted rows flag
 			let inserted = false;
 
+			let initialDimension = "";
+
+			const dimension = {
+				maxColumn: "A",
+				maxRow: 1,
+				minColumn: "A",
+				minRow: 1,
+			};
+
 			const rl = readline.createInterface({
 				// Process all line breaks
 				crlfDelay: Infinity,
@@ -559,6 +562,26 @@ export class TemplateFs {
 			let collection = "";
 
 			for await (const line of rl) {
+				// Process <dimension>
+				if (!initialDimension && /<dimension\s+ref="[^"]*"/.test(line)) {
+					const dimensionMatch = line.match(/<dimension\s+ref="([^"]*)"/);
+
+					if (dimensionMatch) {
+						const dimensionRef = dimensionMatch[1];
+
+						if (dimensionRef) {
+							const [min, max] = dimensionRef.split(":");
+
+							dimension.minColumn = min!.slice(0, 1);
+							dimension.minRow = parseInt(min!.slice(1));
+							dimension.maxColumn = max!.slice(0, 1);
+							dimension.maxRow = parseInt(max!.slice(1));
+						}
+
+						initialDimension = line.match(/<dimension\s+ref="[^"]*"/)?.[0] || "";
+					}
+				}
+
 				// Collect lines between <sheetData> and </sheetData>
 				if (!inserted && isCollecting) {
 					collection += line;
@@ -592,7 +615,15 @@ export class TemplateFs {
 							}
 						}
 
-						const { rowNumber: actualRowNumber } = await Utils.writeRowsToStream(output, rows, maxRowNumber);
+						const { dimension: newDimension, rowNumber: actualRowNumber } = await Utils.writeRowsToStream(output, rows, maxRowNumber);
+
+						if (compareColumns(newDimension.maxColumn, dimension.maxColumn) > 0) {
+							dimension.maxColumn = newDimension.maxColumn;
+						}
+
+						if (newDimension.maxRow > dimension.maxRow) {
+							dimension.maxRow = newDimension.maxRow;
+						}
 
 						if (innerRows) {
 							const filteredRows = Utils.getRowsAbove(innerRowsMap, actualRowNumber);
@@ -647,7 +678,15 @@ export class TemplateFs {
 					}
 
 					// new <row>
-					const { rowNumber: actualRowNumber } = await Utils.writeRowsToStream(output, rows, maxRowNumber);
+					const { dimension: newDimension, rowNumber: actualRowNumber } = await Utils.writeRowsToStream(output, rows, maxRowNumber);
+
+					if (compareColumns(newDimension.maxColumn, dimension.maxColumn) > 0) {
+						dimension.maxColumn = newDimension.maxColumn;
+					}
+
+					if (newDimension.maxRow > dimension.maxRow) {
+						dimension.maxRow = newDimension.maxRow;
+					}
 
 					if (innerRows) {
 						const filteredRows = Utils.getRowsAbove(innerRowsMap, actualRowNumber);
@@ -686,7 +725,15 @@ export class TemplateFs {
 					output.write("<sheetData>");
 
 					// Prepare the rows
-					await Utils.writeRowsToStream(output, rows, maxRowNumber);
+					const { dimension: newDimension } = await Utils.writeRowsToStream(output, rows, maxRowNumber);
+
+					if (compareColumns(newDimension.maxColumn, dimension.maxColumn) > 0) {
+						dimension.maxColumn = newDimension.maxColumn;
+					}
+
+					if (newDimension.maxRow > dimension.maxRow) {
+						dimension.maxRow = newDimension.maxRow;
+					}
 
 					// Insert closing tag
 					output.write("</sheetData>");
@@ -717,9 +764,52 @@ export class TemplateFs {
 			rl.close();
 			output.end();
 
-			// Move the temporary file to the original location
-			await fs.rename(tempPath, fullPath);
+			// update dimension
+			{
+				const target = initialDimension;
+				const refRange = `${dimension.minColumn}${dimension.minRow}:${dimension.maxColumn}${dimension.maxRow}`;
+				const replacement = `<dimension ref="${refRange}"`;
 
+				let buffer = "";
+				let replaced = false;
+
+				const input = fsSync.createReadStream(tempPath, { encoding: "utf8" });
+				const output = fsSync.createWriteStream(fullPath);
+
+				await new Promise((resolve, reject) => {
+					input.on("data", chunk => {
+						buffer += chunk;
+
+						if (!replaced) {
+							const index = buffer.indexOf(target);
+							if (index !== -1) {
+								// Заменяем только первое вхождение
+								buffer = buffer.replace(target, replacement);
+								replaced = true;
+							}
+						}
+
+						output.write(buffer);
+						buffer = ""; // очищаем, т.к. мы уже записали
+					});
+
+					input.on("error", reject);
+					output.on("error", reject);
+
+					input.on("end", () => {
+						// на всякий случай дописываем остаток
+						if (buffer) {
+							output.write(buffer);
+						}
+
+						output.end();
+
+						resolve(true);
+					});
+				});
+			}
+
+			await fs.unlink(tempPath);
 		} finally {
 			this.#isProcessing = false;
 		}
@@ -837,6 +927,7 @@ export class TemplateFs {
 	 * @param {Object} data - The data to create the template from.
 	 * @param {string} data.source - The path or buffer of the Excel file.
 	 * @param {string} data.destination - The path to save the template to.
+	 * @param {boolean} data.isUniqueDestination - Whether to add a random UUID to the destination path.
 	 * @returns {Promise<Template>} A new Template instance.
 	 * @throws {Error} If reading or writing files fails.
 	 * @experimental This API is experimental and might change in future versions.
@@ -844,12 +935,18 @@ export class TemplateFs {
 	static async from(data: {
 		destination: string;
 		source: string | Buffer;
+		isUniqueDestination?: boolean;
 	}): Promise<TemplateFs> {
-		const { destination, source } = data;
+		const { destination, isUniqueDestination = true, source } = data;
 
 		if (!destination) {
 			throw new Error("Destination is required");
 		}
+
+		// add random uuid to destination
+		const destinationWithUuid = isUniqueDestination
+			? path.join(destination, crypto.randomUUID())
+			: destination;
 
 		const buffer = typeof source === "string"
 			? await fs.readFile(source)
@@ -858,18 +955,23 @@ export class TemplateFs {
 		const files = await Zip.read(buffer);
 
 		// if destination exists, remove it
-		await fs.rm(destination, { force: true, recursive: true });
+		await fs.rm(destinationWithUuid, { force: true, recursive: true });
 
 		// Write all files to the file system, preserving exact paths
-		await fs.mkdir(destination, { recursive: true });
+		await fs.mkdir(destinationWithUuid, { recursive: true });
 		await Promise.all(
 			Object.entries(files).map(async ([filePath, content]) => {
-				const fullPath = path.join(destination, ...filePath.split("/"));
+				const fullPath = path.join(destinationWithUuid, ...filePath.split("/"));
 				await fs.mkdir(path.dirname(fullPath), { recursive: true });
 				await fs.writeFile(fullPath, content);
 			}),
 		);
 
-		return new TemplateFs(new Set(Object.keys(files)), destination);
+		return new TemplateFs(new Set(Object.keys(files)), destinationWithUuid);
 	}
 }
+
+const compareColumns = (a: string, b: string): number => {
+	if (a === b) return 0;
+	return a.length === b.length ? (a < b ? -1 : 1) : (a.length < b.length ? -1 : 1);
+};

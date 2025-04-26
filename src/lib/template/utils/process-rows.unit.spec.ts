@@ -13,7 +13,7 @@ describe("processRows", () => {
 	};
 
 	beforeEach(() => {
-		// Сбрасываем состояние перед каждым тестом
+		// Reset the state before each test
 		baseData = {
 			mergeCellMatches: [],
 			replacements: {},

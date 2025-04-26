@@ -41,9 +41,7 @@ export function validateWorksheetXml(xml: string): ValidationResult {
 	const requiredElements = [
 		{ name: "sheetViews", tag: "<sheetViews>" },
 		{ name: "sheetFormatPr", tag: "<sheetFormatPr" },
-		{ name: "cols", tag: "<cols>" },
 		{ name: "sheetData", tag: "<sheetData>" },
-		{ name: "mergeCells", tag: "<mergeCells" },
 	];
 
 	for (const { name, tag } of requiredElements) {
@@ -129,76 +127,108 @@ export function validateWorksheetXml(xml: string): ValidationResult {
 	}
 
 	// 4. Check mergeCells
-	const mergeCellsStart = xml.indexOf("<mergeCells");
-	const mergeCellsEnd = xml.indexOf("</mergeCells>");
-	if (mergeCellsStart === -1 || mergeCellsEnd === -1) {
-		return createError("Invalid mergeCells structure");
-	}
+	if (xml.includes("<mergeCells")) {
 
-	const mergeCellsContent = xml.substring(mergeCellsStart, mergeCellsEnd);
-	const countMatch = mergeCellsContent.match(/count="(\d+)"/);
-	if (!countMatch) {
-		return createError("Count attribute not specified for mergeCells");
-	}
-
-	const mergeCellTags = mergeCellsContent.match(/<mergeCell\s+ref="([A-Z]+\d+:[A-Z]+\d+)"\s*\/>/g);
-	if (!mergeCellTags) {
-		return createError("No merged cells found");
-	}
-
-	// Check if the number of mergeCells matches the count attribute
-	if (mergeCellTags.length !== parseInt(countMatch[1]!)) {
-		return createError(
-			"Mismatch in the number of merged cells",
-			`Expected: ${countMatch[1]}, found: ${mergeCellTags.length}`,
-		);
-	}
-
-	// Check for duplicates of mergeCell
-	const mergeRefs = new Set<string>();
-	const duplicates = new Set<string>();
-
-	for (const mergeTag of mergeCellTags) {
-		const refMatch = mergeTag.match(/ref="([A-Z]+\d+:[A-Z]+\d+)"/);
-		if (!refMatch) {
-			return createError("Invalid merge cell format", `Tag: ${mergeTag}`);
+		const mergeCellsStart = xml.indexOf("<mergeCells");
+		const mergeCellsEnd = xml.indexOf("</mergeCells>");
+		if (mergeCellsStart === -1 || mergeCellsEnd === -1) {
+			return createError("Invalid mergeCells structure");
 		}
 
-		const ref = refMatch[1];
-		if (mergeRefs.has(ref!)) {
-			duplicates.add(ref!);
-		} else {
-			mergeRefs.add(ref!);
+		const mergeCellsContent = xml.substring(mergeCellsStart, mergeCellsEnd);
+		const countMatch = mergeCellsContent.match(/count="(\d+)"/);
+		if (!countMatch) {
+			return createError("Count attribute not specified for mergeCells");
 		}
-	}
 
-	if (duplicates.size > 0) {
-		return createError(
-			"Duplicates of merged cells found",
-			`Duplicates: ${Array.from(duplicates).join(", ")}`,
-		);
-	}
+		const mergeCellTags = mergeCellsContent.match(/<mergeCell\s+ref="([A-Z]+\d+:[A-Z]+\d+)"\s*\/>/g);
+		if (!mergeCellTags) {
+			return createError("No merged cells found");
+		}
 
-	// Check for overlapping merge ranges
-	const mergedRanges = Array.from(mergeRefs).map(ref => {
-		const [start, end] = ref.split(":");
-		return {
-			endCol: end!.match(/[A-Z]+/)?.[0] || "",
-			endRow: parseInt(end!.match(/\d+/)?.[0] || "0"),
-			startCol: start!.match(/[A-Z]+/)?.[0] || "",
-			startRow: parseInt(start!.match(/\d+/)?.[0] || "0"),
-		};
-	});
+		// Check if the number of mergeCells matches the count attribute
+		if (mergeCellTags.length !== parseInt(countMatch[1]!)) {
+			return createError(
+				"Mismatch in the number of merged cells",
+				`Expected: ${countMatch[1]}, found: ${mergeCellTags.length}`,
+			);
+		}
 
-	for (let i = 0; i < mergedRanges.length; i++) {
-		for (let j = i + 1; j < mergedRanges.length; j++) {
-			const a = mergedRanges[i];
-			const b = mergedRanges[j];
+		// Check for duplicates of mergeCell
+		const mergeRefs = new Set<string>();
+		const duplicates = new Set<string>();
 
-			if (rangesIntersect(a!, b!)) {
+		for (const mergeTag of mergeCellTags) {
+			const refMatch = mergeTag.match(/ref="([A-Z]+\d+:[A-Z]+\d+)"/);
+			if (!refMatch) {
+				return createError("Invalid merge cell format", `Tag: ${mergeTag}`);
+			}
+
+			const ref = refMatch[1];
+			if (mergeRefs.has(ref!)) {
+				duplicates.add(ref!);
+			} else {
+				mergeRefs.add(ref!);
+			}
+		}
+
+		if (duplicates.size > 0) {
+			return createError(
+				"Duplicates of merged cells found",
+				`Duplicates: ${Array.from(duplicates).join(", ")}`,
+			);
+		}
+
+		// Check for overlapping merge ranges
+		const mergedRanges = Array.from(mergeRefs).map(ref => {
+			const [start, end] = ref.split(":");
+			return {
+				endCol: end!.match(/[A-Z]+/)?.[0] || "",
+				endRow: parseInt(end!.match(/\d+/)?.[0] || "0"),
+				startCol: start!.match(/[A-Z]+/)?.[0] || "",
+				startRow: parseInt(start!.match(/\d+/)?.[0] || "0"),
+			};
+		});
+
+		for (let i = 0; i < mergedRanges.length; i++) {
+			for (let j = i + 1; j < mergedRanges.length; j++) {
+				const a = mergedRanges[i];
+				const b = mergedRanges[j];
+
+				if (rangesIntersect(a!, b!)) {
+					return createError(
+						"Found intersecting merged cells",
+						`Intersecting: ${getRangeString(a!)} and ${getRangeString(b!)}`,
+					);
+				}
+			}
+		}
+
+		// 6. Additional check: all mergeCell tags refer to existing cells
+		for (const mergeTag of mergeCellTags) {
+			const refMatch = mergeTag.match(/ref="([A-Z]+\d+:[A-Z]+\d+)"/);
+			if (!refMatch) {
+				return createError("Invalid merge cell format", `Tag: ${mergeTag}`);
+			}
+
+			const [cell1, cell2] = refMatch[1]!.split(":");
+			const cell1Col = cell1!.match(/[A-Z]+/)?.[0];
+			const cell1Row = parseInt(cell1!.match(/\d+/)?.[0] || "0");
+			const cell2Col = cell2!.match(/[A-Z]+/)?.[0];
+			const cell2Row = parseInt(cell2!.match(/\d+/)?.[0] || "0");
+
+			if (!cell1Col || !cell2Col || isNaN(cell1Row) || isNaN(cell2Row)) {
+				return createError("Invalid merged cell coordinates", `Merged cells: ${refMatch[1]}`);
+			}
+
+			// Check if the merged cells exist
+			const cell1Exists = allCells.some(c => c.row === cell1Row && c.col === cell1Col);
+			const cell2Exists = allCells.some(c => c.row === cell2Row && c.col === cell2Col);
+
+			if (!cell1Exists || !cell2Exists) {
 				return createError(
-					"Found intersecting merged cells",
-					`Intersecting: ${getRangeString(a!)} and ${getRangeString(b!)}`,
+					"Merged cell reference points to non-existent cells",
+					`Merged cells: ${refMatch[1]}, missing: ${!cell1Exists ? `${cell1Col}${cell1Row}` : `${cell2Col}${cell2Row}`}`,
 				);
 			}
 		}
@@ -238,35 +268,6 @@ export function validateWorksheetXml(xml: string): ValidationResult {
 			return createError(
 				"Cell is outside the specified area (by column)",
 				`Cell: ${cell.col}${cell.row}, dimension: ${dimensionMatch[1]}`,
-			);
-		}
-	}
-
-	// 6. Additional check: all mergeCell tags refer to existing cells
-	for (const mergeTag of mergeCellTags) {
-		const refMatch = mergeTag.match(/ref="([A-Z]+\d+:[A-Z]+\d+)"/);
-		if (!refMatch) {
-			return createError("Invalid merge cell format", `Tag: ${mergeTag}`);
-		}
-
-		const [cell1, cell2] = refMatch[1]!.split(":");
-		const cell1Col = cell1!.match(/[A-Z]+/)?.[0];
-		const cell1Row = parseInt(cell1!.match(/\d+/)?.[0] || "0");
-		const cell2Col = cell2!.match(/[A-Z]+/)?.[0];
-		const cell2Row = parseInt(cell2!.match(/\d+/)?.[0] || "0");
-
-		if (!cell1Col || !cell2Col || isNaN(cell1Row) || isNaN(cell2Row)) {
-			return createError("Invalid merged cell coordinates", `Merged cells: ${refMatch[1]}`);
-		}
-
-		// Check if the merged cells exist
-		const cell1Exists = allCells.some(c => c.row === cell1Row && c.col === cell1Col);
-		const cell2Exists = allCells.some(c => c.row === cell2Row && c.col === cell2Col);
-
-		if (!cell1Exists || !cell2Exists) {
-			return createError(
-				"Merged cell reference points to non-existent cells",
-				`Merged cells: ${refMatch[1]}, missing: ${!cell1Exists ? `${cell1Col}${cell1Row}` : `${cell2Col}${cell2Row}`}`,
 			);
 		}
 	}

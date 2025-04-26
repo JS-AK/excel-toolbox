@@ -19,16 +19,16 @@ new TemplateMemory(files: Record<string, Buffer>)
 
 ---
 
-### 📄 Properties
+## 📄 Properties
 
 - `files: Record<string, Buffer>` — in-memory map of file contents.
 - `destroyed: boolean` — indicates whether the instance has been destroyed (read-only).
 
 ---
 
-### 📚 Methods
+## 📚 Methods
 
-#### `copySheet(sourceName: string, newName: string): Promise<void>`
+### `copySheet(sourceName: string, newName: string): Promise<void>`
 
 Creates a copy of an existing worksheet with a new name.
 
@@ -40,7 +40,7 @@ Creates a copy of an existing worksheet with a new name.
 
 ---
 
-#### `substitute(sheetName: string, replacements: Record<string, unknown>): Promise<void>`
+### `substitute(sheetName: string, replacements: Record<string, unknown>): Promise<void>`
 
 Replaces placeholders of the form `${key}` with values from the `replacements` object. For arrays, use placeholders with key `${table:key}`.
 
@@ -49,7 +49,7 @@ Replaces placeholders of the form `${key}` with values from the `replacements` o
 
 ---
 
-#### `insertRows(data: { sheetName: string; startRowNumber?: number; rows: unknown[][] }): Promise<void>`
+### `insertRows(data: { sheetName: string; startRowNumber?: number; rows: unknown[][] }): Promise<void>`
 
 Inserts rows into a specified worksheet.
 
@@ -63,7 +63,7 @@ Inserts rows into a specified worksheet.
 
 ---
 
-#### `insertRowsStream(data: { sheetName: string; startRowNumber?: number; rows: AsyncIterable<unknown[]> }): Promise<void>`
+### `insertRowsStream(data: { sheetName: string; startRowNumber?: number; rows: AsyncIterable<unknown[]> }): Promise<void>`
 
 Streams and inserts rows into a worksheet, useful for handling large datasets.
 
@@ -74,7 +74,7 @@ Streams and inserts rows into a worksheet, useful for handling large datasets.
 
 ---
 
-#### `save(): Promise<Buffer>`
+### `save(): Promise<Buffer>`
 
 Generates a new Excel file and returns it as a `Buffer`.
 
@@ -85,7 +85,7 @@ Generates a new Excel file and returns it as a `Buffer`.
 
 ---
 
-#### `set(key: string, content: Buffer): Promise<void>`
+### `set(key: string, content: Buffer): Promise<void>`
 
 Replaces the content of a specific file in the template.
 
@@ -97,9 +97,39 @@ Replaces the content of a specific file in the template.
 
 ---
 
-### 💡 Usage Examples
+### `mergeSheets(data: { additions: { sheetIndexes?: number[]; sheetNames?: string[] }; baseSheetIndex?: number; baseSheetName?: string; gap?: number }): void`
 
-#### Create from File and Modify
+Merges multiple worksheets into a single base worksheet.
+
+- `additions` — defines the sheets to merge:
+  - `sheetIndexes` — array of 1-based sheet indexes to merge.
+  - `sheetNames` — array of sheet names to merge.
+- `baseSheetIndex` — 1-based index of the base sheet to merge into (optional, default is 1).
+- `baseSheetName` — name of the base sheet to merge into (optional).
+- `gap` — number of empty rows to insert between merged sections (default: `0`).
+- Throws if:
+  - The instance is destroyed.
+  - Invalid sheet names or indexes are provided.
+  - Both `baseSheetIndex` and `baseSheetName` are undefined.
+
+---
+
+### `removeSheets(data: { sheetNames?: string[]; sheetIndexes?: number[] }): void`
+
+Removes worksheets from the workbook.
+
+- `sheetNames` — array of sheet names to remove.
+- `sheetIndexes` — array of 1-based sheet indexes to remove.
+- Throws if:
+  - The instance is destroyed.
+  - Sheet names or indexes do not exist.
+  - Neither `sheetNames` nor `sheetIndexes` are provided.
+
+---
+
+## 💡 Usage Examples
+
+### Create from File and Modify
 
 ```ts
 const template = await TemplateMemory.from({
@@ -113,7 +143,7 @@ const modifiedExcel = await template.save();
 fs.writeFileSync("output.xlsx", modifiedExcel);
 ```
 
-#### Insert Rows from a Stream
+### Insert Rows from a Stream
 
 ```ts
 async function* generateData() {
@@ -134,7 +164,7 @@ await template.insertRowsStream({
 fs.writeFileSync("large-output.xlsx", await template.save());
 ```
 
-#### Replace Internal File Content
+### Replace Internal File Content
 
 ```ts
 const template = await TemplateMemory.from({
@@ -150,7 +180,7 @@ await template.set(
 
 ---
 
-### 🛑 Internal Checks
+## 🛑 Internal Checks
 
 Methods perform validation:
 
