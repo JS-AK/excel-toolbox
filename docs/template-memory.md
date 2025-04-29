@@ -201,6 +201,25 @@ Removes worksheets from the workbook.
 
 ---
 
+### `from`
+
+Creates a new `TemplateMemory` instance from a source Excel file.
+
+- Input:
+  - `options: object` — configuration object
+    - `source: string | Buffer` — path to source Excel file or its Buffer content
+- Output: `Promise<TemplateMemory>`
+- Preconditions:
+  - Valid source file/Buffer
+- Postconditions:
+  - Files loaded into memory
+  - Instance ready for use
+- Throws if:
+  - Source file invalid or missing
+  - File parsing fails
+
+---
+
 ## 💡 Usage Examples
 
 ### Create from File and Modify

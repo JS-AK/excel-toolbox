@@ -185,6 +185,28 @@ Replaces the content of a specific file in the template.
 
 ---
 
+### `from`
+
+Creates a new `TemplateFs` instance from a source Excel file.
+
+- Input:
+  - `options: object` — configuration object
+    - `source: string | Buffer` — path to source Excel file or its Buffer content
+    - `destination: string` — directory path for extracted files
+- Output: `Promise<TemplateFs>`
+- Preconditions:
+  - Valid source file/Buffer
+  - Writable destination path
+- Postconditions:
+  - Files extracted to destination
+  - Instance ready for use
+- Throws if:
+  - Source file invalid or missing
+  - Destination path not writable
+  - Extraction fails
+
+---
+
 ## 💡 Usage Examples
 
 ### Insert Rows from a Stream and Save to File Stream
