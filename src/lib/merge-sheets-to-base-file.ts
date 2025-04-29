@@ -49,7 +49,7 @@ export async function mergeSheetsToBaseFile(data: {
 		});
 	}
 
-	mergeSheetsToBaseFileProcess({
+	await mergeSheetsToBaseFileProcess({
 		additions: additionsUpdated,
 		baseFiles,
 		baseSheetIndex,

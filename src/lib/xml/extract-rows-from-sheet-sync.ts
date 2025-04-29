@@ -1,4 +1,4 @@
-import { extractXmlFromSheet } from "./extract-xml-from-sheet.js";
+import { extractXmlFromSheetSync } from "./extract-xml-from-sheet-sync.js";
 
 /**
  * Parses a worksheet (either as Buffer or string) to extract row data,
@@ -20,16 +20,16 @@ import { extractXmlFromSheet } from "./extract-xml-from-sheet.js";
  *   - mergeCells: Array of merged cell ranges (e.g., [{ref: "A1:B2"}])
  * @throws {Error} If the sheetData section is not found in the XML
  */
-export async function extractRowsFromSheet(sheet: Buffer | string): Promise<{
+export function extractRowsFromSheetSync(sheet: Buffer | string): {
 	rows: string[];
 	lastRowNumber: number;
 	mergeCells: { ref: string }[];
 	xml: string;
-}> {
+} {
 	// Convert Buffer input to XML string if needed
 	const xml = typeof sheet === "string"
 		? sheet
-		: await extractXmlFromSheet(sheet);
+		: extractXmlFromSheetSync(sheet);
 
 	// Extract the sheetData section containing all rows
 	const sheetDataMatch = xml.match(/<sheetData[^>]*>([\s\S]*?)<\/sheetData>/);

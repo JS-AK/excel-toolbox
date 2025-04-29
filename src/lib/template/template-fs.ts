@@ -156,7 +156,7 @@ export class TemplateFs {
 	 */
 	async #getSheetPathByName(sheetName: string): Promise<string> {
 		// Read XML workbook to find sheet name and path
-		const workbookXml = Xml.extractXmlFromSheet(await this.#readFile(this.#excelKeys.workbook));
+		const workbookXml = await Xml.extractXmlFromSheet(await this.#readFile(this.#excelKeys.workbook));
 		const sheetMatch = workbookXml.match(Utils.sheetMatch(sheetName));
 
 		if (!sheetMatch || !sheetMatch[1]) {
@@ -164,7 +164,7 @@ export class TemplateFs {
 		}
 
 		const rId = sheetMatch[1];
-		const relsXml = Xml.extractXmlFromSheet(await this.#readFile(this.#excelKeys.workbookRels));
+		const relsXml = await Xml.extractXmlFromSheet(await this.#readFile(this.#excelKeys.workbookRels));
 		const relMatch = relsXml.match(Utils.relationshipMatch(rId));
 
 		if (!relMatch || !relMatch[1]) {
@@ -238,11 +238,11 @@ export class TemplateFs {
 		let sheetContent = "";
 
 		if (this.fileKeys.has(sharedStringsPath)) {
-			sharedStringsContent = Xml.extractXmlFromSheet(await this.#readFile(sharedStringsPath));
+			sharedStringsContent = await Xml.extractXmlFromSheet(await this.#readFile(sharedStringsPath));
 		}
 
 		if (this.fileKeys.has(sheetPath)) {
-			sheetContent = Xml.extractXmlFromSheet(await this.#readFile(sheetPath));
+			sheetContent = await Xml.extractXmlFromSheet(await this.#readFile(sheetPath));
 
 			const TABLE_REGEX = /\$\{table:([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\}/g;
 
@@ -309,7 +309,7 @@ export class TemplateFs {
 
 			// Read workbook.xml and find the source sheet
 			const workbookXmlPath = this.#excelKeys.workbook;
-			const workbookXml = Xml.extractXmlFromSheet(await this.#readFile(workbookXmlPath));
+			const workbookXml = await Xml.extractXmlFromSheet(await this.#readFile(workbookXmlPath));
 
 			// Find the source sheet
 			const sheetMatch = workbookXml.match(Utils.sheetMatch(sourceName));
@@ -327,7 +327,7 @@ export class TemplateFs {
 			// Find the source sheet path by rId
 			const rId = sheetMatch[1];
 			const relsXmlPath = this.#excelKeys.workbookRels;
-			const relsXml = Xml.extractXmlFromSheet(await this.#readFile(relsXmlPath));
+			const relsXml = await Xml.extractXmlFromSheet(await this.#readFile(relsXmlPath));
 			const relMatch = relsXml.match(Utils.relationshipMatch(rId));
 
 			if (!relMatch || !relMatch[1]) {
@@ -376,7 +376,7 @@ export class TemplateFs {
 			// Read [Content_Types].xml
 			// Update [Content_Types].xml
 			const contentTypesPath = this.#excelKeys.contentTypes;
-			const contentTypesXml = Xml.extractXmlFromSheet(await this.#readFile(contentTypesPath));
+			const contentTypesXml = await Xml.extractXmlFromSheet(await this.#readFile(contentTypesPath));
 			const overrideTag = `<Override PartName="/xl/worksheets/${newSheetFilename}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`;
 			const updatedContentTypesXml = contentTypesXml.replace(
 				"</Types>",
@@ -451,7 +451,7 @@ export class TemplateFs {
 			const sheetPath = await this.#getSheetPathByName(sheetName);
 
 			const sheetXmlRaw = await this.#readFile(sheetPath);
-			const sheetXml = Xml.extractXmlFromSheet(sheetXmlRaw);
+			const sheetXml = await Xml.extractXmlFromSheet(sheetXmlRaw);
 
 			let nextRow = 0;
 

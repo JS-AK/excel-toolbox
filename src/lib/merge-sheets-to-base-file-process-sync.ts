@@ -17,14 +17,14 @@ import * as Xml from "./xml/index.js";
  *
  * The function returns a dictionary of file paths to their corresponding XML content.
  */
-export async function mergeSheetsToBaseFileProcess(data: {
+export function mergeSheetsToBaseFileProcessSync(data: {
 	additions: { files: Record<string, Buffer>; sheetIndexes: number[] }[];
 	baseFiles: Record<string, Buffer>;
 	baseSheetIndex: number;
 	gap: number;
 	sheetNamesToRemove: string[];
 	sheetsToRemove: number[];
-}): Promise<void> {
+}): void {
 	const {
 		additions,
 		baseFiles,
@@ -45,7 +45,7 @@ export async function mergeSheetsToBaseFileProcess(data: {
 		mergeCells: baseMergeCells,
 		rows: baseRows,
 		xml,
-	} = await Xml.extractRowsFromSheet(baseFiles[basePath]);
+	} = Xml.extractRowsFromSheetSync(baseFiles[basePath]);
 
 	const allRows = [...baseRows];
 	const allMergeCells = [...baseMergeCells];
@@ -59,7 +59,7 @@ export async function mergeSheetsToBaseFileProcess(data: {
 				throw new Error(`File does not contain ${sheetPath}`);
 			}
 
-			const { mergeCells, rows } = await Xml.extractRowsFromSheet(files[sheetPath]);
+			const { mergeCells, rows } = Xml.extractRowsFromSheetSync(files[sheetPath]);
 
 			const shiftedRows = Xml.shiftRowIndices(rows, currentRowOffset);
 
