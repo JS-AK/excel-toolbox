@@ -75,7 +75,9 @@ Replaces placeholders of the form `${key}` with values from the `replacements` o
 Inserts rows into a specified worksheet.
 
 - Input:
-  - `data: { sheetName: string; startRowNumber?: number; rows: unknown[][] }`
+  - `sheetName: string` - name of worksheet
+  - `startRowNumber?: number` - starting row index (default: append to the end).
+  - `rows: unknown[][]` - array of arrays, each representing a row of values.
 - Output: `Promise<void>`
 - Preconditions:
   - Instance not destroyed
@@ -97,7 +99,9 @@ Inserts rows into a specified worksheet.
 Streams and inserts rows into a worksheet, useful for handling large datasets.
 
 - Input:
-  - `data: { sheetName: string; startRowNumber?: number; rows: AsyncIterable<unknown[]> }`
+  - `sheetName: string` - name of worksheet
+  - `startRowNumber?: number` - starting row index (default: append to the end).
+  - `rows: AsyncIterable<unknown[]>` - an async iterable where each item is an array of cell values.
 - Output: `Promise<void>`
 - Preconditions:
   - Instance not destroyed
@@ -186,6 +190,8 @@ Replaces the content of a specific file in the template.
 ### Insert Rows from a Stream and Save to File Stream
 
 ```ts
+import { TemplateFs } from '@js-ak/excel-toolbox';
+
 async function* asyncRowsGenerator(count: number): AsyncIterable<unknown[]> {
  for (let i = 0; i < count; i++) {
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -216,6 +222,8 @@ await template.saveStream(outputStream);
 ### Insert Rows from a Stream and Save to Buffer
 
 ```ts
+import { TemplateFs } from '@js-ak/excel-toolbox';
+
 const template = await TemplateFs.from({
   destination: path.resolve(process.cwd(), "temp", crypto.randomUUID()),
   source: path.resolve(process.cwd(), "assets", `./input-01.xlsx`),
@@ -239,6 +247,8 @@ fs.writeFileSync(
 ### Copy Sheet and Apply Substitutions
 
 ```ts
+import { TemplateFs } from '@js-ak/excel-toolbox';
+
 const template = await TemplateFs.from({
   destination: path.resolve(process.cwd(), "temp", crypto.randomUUID()),
   source: path.resolve(process.cwd(), "assets", `./input-01.xlsx`),

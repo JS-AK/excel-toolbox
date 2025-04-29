@@ -206,6 +206,8 @@ Removes worksheets from the workbook.
 ### Create from File and Modify
 
 ```ts
+import { TemplateMemory } from '@js-ak/excel-toolbox';
+
 const template = await TemplateMemory.from({
   source: fs.readFileSync("template.xlsx")
 });
@@ -220,6 +222,8 @@ fs.writeFileSync("output.xlsx", modifiedExcel);
 ### Insert Rows from a Stream
 
 ```ts
+import { TemplateMemory } from '@js-ak/excel-toolbox';
+
 async function* generateData() {
   for (let i = 0; i < 1000; i++) {
     yield [i, `Name ${i}`, new Date()];
@@ -241,6 +245,8 @@ fs.writeFileSync("large-output.xlsx", await template.save());
 ### Replace Internal File Content
 
 ```ts
+import { TemplateMemory } from '@js-ak/excel-toolbox';
+
 const template = await TemplateMemory.from({
   source: fs.readFileSync("template.xlsx")
 });
