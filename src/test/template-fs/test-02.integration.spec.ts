@@ -56,7 +56,7 @@ describe("TemplateFs integration test", () => {
 		// find new rows in the rebuilt zip file
 		const sheet1Rebuilt = rebuiltZip["xl/worksheets/sheet1.xml"].toString();
 
-		const rebuiltXml = Xml.extractRowsFromSheet(sheet1Rebuilt);
+		const rebuiltXml = await Xml.extractRowsFromSheet(sheet1Rebuilt);
 
 		expect(rebuiltXml.rows).toEqual([
 			"<row r=\"1\" spans=\"1:5\"><c r=\"A1\"><v>1</v></c><c r=\"B1\"><v>2</v></c><c r=\"C1\"><v>3</v></c><c r=\"D1\"><v>4</v></c><c r=\"E1\"><v>5</v></c></row>",
@@ -109,7 +109,7 @@ describe("TemplateFs integration test", () => {
 		// find new rows in the rebuilt zip file
 		const sheet1Rebuilt = rebuiltZip["xl/worksheets/sheet1.xml"].toString();
 
-		const rebuiltXml = Xml.extractRowsFromSheet(sheet1Rebuilt);
+		const rebuiltXml = await Xml.extractRowsFromSheet(sheet1Rebuilt);
 
 		expect(rebuiltXml.rows).toEqual([
 			"<row r=\"1\" spans=\"1:5\"><c r=\"A1\"><v>1</v></c><c r=\"B1\"><v>2</v></c><c r=\"C1\"><v>3</v></c><c r=\"D1\"><v>4</v></c><c r=\"E1\"><v>5</v></c></row>",

@@ -131,7 +131,7 @@ export class TemplateMemory {
 	 * @throws {Error} If the file key is not found.
 	 * @experimental This API is experimental and might change in future versions.
 	 */
-	#extractXmlFromSheet(fileKey: string): string {
+	async #extractXmlFromSheet(fileKey: string): Promise<string> {
 		if (!this.files[fileKey]) {
 			throw new Error(`${fileKey} not found`);
 		}
@@ -151,12 +151,12 @@ export class TemplateMemory {
 	 * @throws {Error} If the file key is not found
 	 * @experimental This API is experimental and might change in future versions.
 	 */
-	#extractRowsFromSheet(fileKey: string): {
+	async #extractRowsFromSheet(fileKey: string): Promise<{
 		rows: string[];
 		lastRowNumber: number;
 		mergeCells: { ref: string }[];
 		xml: string;
-	} {
+	}> {
 		if (!this.files[fileKey]) {
 			throw new Error(`${fileKey} not found`);
 		}
@@ -172,9 +172,9 @@ export class TemplateMemory {
 	 * @throws {Error} If the sheet with the given name does not exist.
 	 * @experimental This API is experimental and might change in future versions.
 	 */
-	#getSheetPathByName(sheetName: string): string {
+	async #getSheetPathByName(sheetName: string): Promise<string> {
 		// Find the sheet
-		const workbookXml = this.#extractXmlFromSheet(this.#excelKeys.workbook);
+		const workbookXml = await this.#extractXmlFromSheet(this.#excelKeys.workbook);
 		const sheetMatch = workbookXml.match(Utils.sheetMatch(sheetName));
 
 		if (!sheetMatch || !sheetMatch[1]) {
@@ -182,7 +182,7 @@ export class TemplateMemory {
 		}
 
 		const rId = sheetMatch[1];
-		const relsXml = this.#extractXmlFromSheet(this.#excelKeys.workbookRels);
+		const relsXml = await this.#extractXmlFromSheet(this.#excelKeys.workbookRels);
 		const relMatch = relsXml.match(Utils.relationshipMatch(rId));
 
 		if (!relMatch || !relMatch[1]) {
@@ -243,13 +243,13 @@ export class TemplateMemory {
 		let sheetContent = "";
 
 		if (this.files[sharedStringsPath]) {
-			sharedStringsContent = this.#extractXmlFromSheet(sharedStringsPath);
+			sharedStringsContent = await this.#extractXmlFromSheet(sharedStringsPath);
 		}
 
-		const sheetPath = this.#getSheetPathByName(sheetName);
+		const sheetPath = await this.#getSheetPathByName(sheetName);
 
 		if (this.files[sheetPath]) {
-			sheetContent = this.#extractXmlFromSheet(sheetPath);
+			sheetContent = await this.#extractXmlFromSheet(sheetPath);
 
 			const TABLE_REGEX = /\$\{table:([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\}/g;
 
@@ -293,12 +293,12 @@ export class TemplateMemory {
 	 * @throws {Error} If no sheets are found to merge.
 	 * @experimental This API is experimental and might change in future versions.
 	 */
-	#mergeSheets(data: {
+	async #mergeSheets(data: {
 		additions: { sheetIndexes?: number[]; sheetNames?: string[] };
 		baseSheetIndex?: number;
 		baseSheetName?: string;
 		gap?: number;
-	}): void {
+	}): Promise<void> {
 		const {
 			additions,
 			baseSheetIndex = 1,
@@ -309,7 +309,7 @@ export class TemplateMemory {
 		let fileKey: string = "";
 
 		if (baseSheetName) {
-			fileKey = this.#getSheetPathByName(baseSheetName);
+			fileKey = await this.#getSheetPathByName(baseSheetName);
 		}
 
 		if (baseSheetIndex && !fileKey) {
@@ -329,7 +329,7 @@ export class TemplateMemory {
 			mergeCells: baseMergeCells,
 			rows: baseRows,
 			xml,
-		} = this.#extractRowsFromSheet(fileKey);
+		} = await this.#extractRowsFromSheet(fileKey);
 
 		const allRows = [...baseRows];
 		const allMergeCells = [...baseMergeCells];
@@ -338,11 +338,11 @@ export class TemplateMemory {
 		const sheetPaths: string[] = [];
 
 		if (additions.sheetIndexes) {
-			sheetPaths.push(...(additions.sheetIndexes).map(e => this.#getSheetPathById(e)));
+			sheetPaths.push(...(await Promise.all(additions.sheetIndexes.map(e => this.#getSheetPathById(e)))));
 		}
 
 		if (additions.sheetNames) {
-			sheetPaths.push(...(additions.sheetNames).map(e => this.#getSheetPathByName(e)));
+			sheetPaths.push(...(await Promise.all(additions.sheetNames.map(e => this.#getSheetPathByName(e)))));
 		}
 
 		if (sheetPaths.length === 0) {
@@ -354,7 +354,7 @@ export class TemplateMemory {
 				throw new Error(`Sheet "${sheetPath}" not found`);
 			}
 
-			const { mergeCells, rows } = Xml.extractRowsFromSheet(this.files[sheetPath]);
+			const { mergeCells, rows } = await Xml.extractRowsFromSheet(this.files[sheetPath]);
 
 			const shiftedRows = Xml.shiftRowIndices(rows, currentRowOffset);
 
@@ -462,7 +462,7 @@ export class TemplateMemory {
 
 			// Read workbook.xml and find the source sheet
 			const workbookXmlPath = this.#excelKeys.workbook;
-			const workbookXml = this.#extractXmlFromSheet(this.#excelKeys.workbook);
+			const workbookXml = await this.#extractXmlFromSheet(this.#excelKeys.workbook);
 
 			// Find the source sheet
 			const sheetMatch = workbookXml.match(Utils.sheetMatch(sourceName));
@@ -480,7 +480,7 @@ export class TemplateMemory {
 			// Find the source sheet path by rId
 			const rId = sheetMatch[1];
 			const relsXmlPath = this.#excelKeys.workbookRels;
-			const relsXml = this.#extractXmlFromSheet(this.#excelKeys.workbookRels);
+			const relsXml = await this.#extractXmlFromSheet(this.#excelKeys.workbookRels);
 			const relMatch = relsXml.match(Utils.relationshipMatch(rId));
 
 			if (!relMatch || !relMatch[1]) {
@@ -541,7 +541,7 @@ export class TemplateMemory {
 			// Read [Content_Types].xml
 			// Update [Content_Types].xml
 			const contentTypesPath = "[Content_Types].xml";
-			const contentTypesXml = this.#extractXmlFromSheet(contentTypesPath);
+			const contentTypesXml = await this.#extractXmlFromSheet(contentTypesPath);
 			const overrideTag = `<Override PartName="/xl/worksheets/${newSheetFilename}" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`;
 			const updatedContentTypesXml = contentTypesXml.replace(
 				"</Types>",
@@ -613,8 +613,8 @@ export class TemplateMemory {
 			Utils.checkRows(preparedRows);
 
 			// Find the sheet
-			const sheetPath = this.#getSheetPathByName(sheetName);
-			const sheetXml = this.#extractXmlFromSheet(sheetPath);
+			const sheetPath = await this.#getSheetPathByName(sheetName);
+			const sheetXml = await this.#extractXmlFromSheet(sheetPath);
 
 			let nextRow = 0;
 
@@ -693,8 +693,8 @@ export class TemplateMemory {
 			if (!sheetName) throw new Error("Sheet name is required");
 
 			// Read XML workbook to find sheet name and path
-			const sheetPath = this.#getSheetPathByName(sheetName);
-			const sheetXml = this.#extractXmlFromSheet(sheetPath);
+			const sheetPath = await this.#getSheetPathByName(sheetName);
+			const sheetXml = await this.#extractXmlFromSheet(sheetPath);
 
 			const output = new MemoryWriteStream();
 

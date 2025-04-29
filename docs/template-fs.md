@@ -1,6 +1,6 @@
 # TemplateFs
 
-The `TemplateFs` class is designed for working with Excel (`.xlsx`) templates. It supports extracting, modifying, and rebuilding Excel files. Typical use cases include placeholder substitution, sheet duplication, and row insertion.
+The `TemplateFs` class is designed for working with Excel (`.xlsx`) templates extracted to the filesystem. It enables modifying templates, inserting rows, substituting placeholders, and saving either as a `Buffer` or directly into a writable stream.
 
 > ⚠️ **Experimental API**
 > Interface is subject to change in future versions.
@@ -13,8 +13,12 @@ The `TemplateFs` class is designed for working with Excel (`.xlsx`) templates. I
 new TemplateFs(fileKeys: Set<string>, destination: string)
 ```
 
-- `fileKeys` — a set of relative file paths that make up the Excel template.
-- `destination` — a path to a directory where the template is extracted and edited.
+- Input:
+  - `fileKeys` — a set of relative file paths representing the `.xlsx` file structure.
+  - `destination` — path to a directory where the template is extracted and modified.
+- Output: `TemplateFs` instance
+- Preconditions: None
+- Postconditions: Instance is ready for use with provided files.
 
 > Prefer using the static method `TemplateFs.from()` to create instances.
 
@@ -22,42 +26,65 @@ new TemplateFs(fileKeys: Set<string>, destination: string)
 
 ## 📄 Properties
 
-- `fileKeys: Set<string>` — the set of template file paths involved in final assembly.
-- `destination: string` — the working directory where files are extracted and edited.
+- `fileKeys: Set<string>` — set of template file paths used for rebuilding the `.xlsx`.
+- `destination: string` — working directory for extracted and modified files.
 - `destroyed: boolean` — indicates whether the instance has been destroyed (read-only).
 
 ---
 
 ## 📚 Methods
 
-### `copySheet(sourceName: string, newName: string): Promise<void>`
+### `copySheet`
 
 Creates a copy of an existing worksheet with a new name.
 
-- `sourceName` — the name of the existing sheet.
-- `newName` — the name for the new sheet.
+- Input:
+  - `sourceName: string` — name of the existing sheet.
+  - `newName: string` — name for the new sheet.
+- Output: `Promise<void>`
+- Preconditions:
+  - Instance not destroyed
+  - `sourceName` exists
+  - `newName` does not exist
+- Postconditions:
+  - New sheet created with content from source
+  - Sheet relationships updated
 - Throws if:
   - `sourceName` does not exist.
   - `newName` already exists.
 
 ---
 
-### `substitute(sheetName: string, replacements: Record<string, unknown>): Promise<void>`
+### `substitute`
 
-Replaces placeholders of the form `${key}` with values from the `replacements` object. For arrays use placeholders with key `${table:key}`
+Replaces placeholders of the form `${key}` with values from the `replacements` object. For arrays, use placeholders with key `${table:key}`.
 
-- `sheetName` — the name of the worksheet.
-- `replacements` — key-value map for substitution.
+- Input:
+  - `sheetName: string` — name of worksheet
+  - `replacements: Record<string, unknown>` — key-value map for substitution
+- Output: `Promise<void>`
+- Preconditions:
+  - Instance not destroyed
+  - Sheet exists
+- Postconditions:
+  - Placeholders replaced with values
+  - Shared strings updated if needed
 
----
-
-### `insertRows(data: { sheetName: string; startRowNumber?: number; rows: unknown[][] }): Promise<void>`
+### `insertRows`
 
 Inserts rows into a specified worksheet.
 
-- `sheetName` — name of the worksheet.
-- `startRowNumber` — starting row index (default: append to the end).
-- `rows` — array of arrays, each representing a row of values.
+- Input:
+  - `data: { sheetName: string; startRowNumber?: number; rows: unknown[][] }`
+- Output: `Promise<void>`
+- Preconditions:
+  - Instance not destroyed
+  - Sheet exists
+  - Row number valid if specified
+  - Cells within bounds
+- Postconditions:
+  - Rows inserted at specified position
+  - Sheet data updated
 - Throws if:
   - The sheet does not exist.
   - The row number is invalid.
@@ -65,61 +92,92 @@ Inserts rows into a specified worksheet.
 
 ---
 
-### `insertRowsStream(data: { sheetName: string; startRowNumber?: number; rows: AsyncIterable<unknown[]> }): Promise<void>`
+### `insertRowsStream`
 
 Streams and inserts rows into a worksheet, useful for handling large datasets.
 
-- `sheetName` — name of the worksheet.
-- `startRowNumber` — starting row index (default: append to the end).
-- `rows` — an async iterable where each item is an array of cell values.
+- Input:
+  - `data: { sheetName: string; startRowNumber?: number; rows: AsyncIterable<unknown[]> }`
+- Output: `Promise<void>`
+- Preconditions:
+  - Instance not destroyed
+  - Sheet exists
+  - Row number valid if specified
+  - Cells within bounds
+- Postconditions:
+  - Rows streamed and inserted
+  - Sheet data updated
 - Same error conditions as `insertRows`.
 
 ---
 
-### `save(): Promise<Buffer>`
+### `save`
 
 Generates a new Excel file and returns it as a `Buffer`.
 
-- Returns: `Promise<Buffer>` — the full `.xlsx` file contents in memory.
+- Input: None
+- Output: `Promise<Buffer>` — the full `.xlsx` file contents in memory.
+- Preconditions:
+  - Instance not destroyed
+- Postconditions:
+  - Instance marked as destroyed
+  - Temporary files removed if necessary
+  - ZIP archive created
 - Throws if:
   - The instance has been destroyed.
-  - There was a failure while rebuilding the ZIP archive.
+  - Failure occurs while rebuilding the ZIP archive.
 
 ---
 
-### `saveStream(output: Writable): Promise<void>`
+### `saveStream`
 
-Writes the resulting Excel file to a writable stream.
+Writes the resulting Excel file directly to a writable stream.
 
-- `output` — any writable stream, e.g. a file or HTTP response.
+- Input:
+  - `output: Writable` — target writable stream (e.g., file, HTTP response).
+- Output: `Promise<void>`
+- Preconditions:
+  - Instance not destroyed
+- Postconditions:
+  - Excel file streamed to output
 - Throws if:
   - The instance has been destroyed.
-  - There was a failure during streaming or rebuilding the ZIP archive.
+  - Streaming or rebuilding fails.
 
 ---
 
-### `validate(): Promise<void>`
+### `validate`
 
-Validates the template by checking all required files exist.
+Validates the internal state by checking if all required files exist.
 
-- Returns: `Promise<void>`
-- Throws:
-  - If the template instance has been destroyed.
-  - If any required files are missing.
+- Input: None
+- Output: `Promise<void>`
+- Preconditions:
+  - Instance not destroyed
+- Postconditions:
+  - Missing files detected (if any)
+- Throws if:
+  - The instance has been destroyed.
+  - Any required file is missing.
 
 ---
 
-### `set(key: string, content: Buffer | string): Promise<void>`
+### `set`
 
-Replaces the contents of a file in the template.
+Replaces the content of a specific file in the template.
 
-- `key` — the relative path of the file within the Excel package (e.g., `xl/worksheets/sheet1.xml`).
-- `content` — the new file content as a `Buffer` or `string`.
-
-- Returns: `Promise<void>`
-- Throws:
-  - If the template instance has been destroyed.
-  - If the file does not exist in the template.
+- Input:
+  - `key: string` — relative Excel path (e.g., `xl/worksheets/sheet1.xml`)
+  - `content: Buffer | string` — new file content
+- Output: `Promise<void>`
+- Preconditions:
+  - Instance not destroyed
+  - File exists
+- Postconditions:
+  - File content updated
+- Throws if:
+  - The instance has been destroyed.
+  - The file does not exist.
 
 ---
 
@@ -214,5 +272,6 @@ await template.saveStream(outputStream);
 
 Methods perform validation:
 
-- Ensures the instance hasn't been destroyed.
-- Prevents concurrent modifications.
+- Ensure the instance hasn't been destroyed.
+- Prevent concurrent modifications.
+- Ensure required files are present before saving.

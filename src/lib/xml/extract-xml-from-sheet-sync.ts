@@ -1,7 +1,4 @@
-import util from "node:util";
-import zlib from "node:zlib";
-
-const inflateRaw = util.promisify(zlib.inflateRaw);
+import { inflateRawSync } from "node:zlib";
 
 /**
  * Extracts and parses XML content from an Excel worksheet file (e.g., xl/worksheets/sheet1.xml).
@@ -13,10 +10,10 @@ const inflateRaw = util.promisify(zlib.inflateRaw);
  * @param {Buffer} buffer - The file content to process, which may be:
  *                         - Raw XML text
  *                         - Deflate-compressed XML data (without zlib headers)
- * @returns {Promise<string>} - The extracted XML content as a UTF-8 string
+ * @returns {string} - The extracted XML content as a UTF-8 string
  * @throws {Error} - If the buffer is empty or cannot be processed
  */
-export async function extractXmlFromSheet(buffer: Buffer): Promise<string> {
+export function extractXmlFromSheetSync(buffer: Buffer): string {
 	if (!buffer || buffer.length === 0) {
 		throw new Error("Empty buffer provided");
 	}
@@ -33,7 +30,7 @@ export async function extractXmlFromSheet(buffer: Buffer): Promise<string> {
 	} else {
 		// Case 2: Attempt to decompress as raw deflate data
 		try {
-			xml = (await inflateRaw(buffer)).toString("utf8");
+			xml = inflateRawSync(buffer).toString("utf8");
 		} catch (err) {
 			throw new Error("Failed to decompress sheet XML: " + (err instanceof Error ? err.message : String(err)));
 		}

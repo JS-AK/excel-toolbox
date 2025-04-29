@@ -1,7 +1,7 @@
 import * as Utils from "./utils/index.js";
 import * as Zip from "./zip/index.js";
 
-import { mergeSheetsToBaseFileProcess } from "./merge-sheets-to-base-file-process.js";
+import { mergeSheetsToBaseFileProcessSync } from "./merge-sheets-to-base-file-process-sync.js";
 
 /**
  * Merge rows from other Excel files into a base Excel file.
@@ -49,7 +49,7 @@ export function mergeSheetsToBaseFileSync(data: {
 		});
 	}
 
-	mergeSheetsToBaseFileProcess({
+	mergeSheetsToBaseFileProcessSync({
 		additions: additionsUpdated,
 		baseFiles,
 		baseSheetIndex,
