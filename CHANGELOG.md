@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/JS-AK/excel-toolbox/compare/v1.6.0...v1.7.0) (2025-04-29)
+
+
+### Features
+
+* drop deps pako ([e04c05d](https://github.com/JS-AK/excel-toolbox/commit/e04c05dd51c045392c6adb27caab7c4ef3bc0406))
+
 # [1.6.0](https://github.com/JS-AK/excel-toolbox/compare/v1.5.0...v1.6.0) (2025-04-26)
 
 
