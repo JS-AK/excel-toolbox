@@ -162,7 +162,7 @@ Merges multiple worksheets into a single base worksheet.
   - `baseSheetIndex?: number` — 1-based index of the base sheet to merge into (optional, default is 1).
   - `baseSheetName?: string` — name of the base sheet to merge into (optional).
   - `gap?: number` - number of empty rows to insert between merged sections (default: `0`).
-- Output: `void`
+- Output: `Promise<void>`
 - Preconditions:
   - Instance not destroyed
   - Valid sheet names/indexes
@@ -185,7 +185,7 @@ Removes worksheets from the workbook.
 - Input:
   - `sheetNames?: string[]` - names of sheets to remove
   - `sheetIndexes?: number[]` - 1-based indexes of sheets to remove
-- Output: `void`
+- Output: `Promise<void>`
 - Preconditions:
   - Instance not destroyed
   - Sheets exist
