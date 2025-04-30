@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/JS-AK/excel-toolbox/compare/v1.7.0...v1.8.0) (2025-04-30)
+
+
+### Features
+
+* updated TemplateFs TemplateMemory ([5757fb5](https://github.com/JS-AK/excel-toolbox/commit/5757fb559b5fbe69e1b39e16ef420449c6ac854c))
+
 # [1.7.0](https://github.com/JS-AK/excel-toolbox/compare/v1.6.0...v1.7.0) (2025-04-29)
 
 
