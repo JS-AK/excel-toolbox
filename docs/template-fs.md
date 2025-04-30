@@ -115,6 +115,29 @@ Streams and inserts rows into a worksheet, useful for handling large datasets.
 
 ---
 
+### `removeSheets`
+
+Removes specified sheets from the workbook by either their names or 1-based indexes.
+
+- Input:
+  - `data: object` — configuration object
+    - `sheetNames?: string[]` — array of sheet names to remove
+    - `sheetIndexes?: number[]` — array of 1-based sheet indexes to remove
+- Output: `Promise<void>`
+- Preconditions:
+  - Instance not destroyed
+  - Sheets exist
+- Postconditions:
+  - Specified sheets removed from workbook
+  - Workbook relationships updated
+  - Content types updated
+- Throws if:
+  - The instance has been destroyed
+  - Any specified sheet does not exist
+  - Any specified sheet index is invalid
+
+---
+
 ### `save`
 
 Generates a new Excel file and returns it as a `Buffer`.

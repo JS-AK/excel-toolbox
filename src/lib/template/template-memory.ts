@@ -48,6 +48,8 @@ export class TemplateMemory {
 		this.files = files;
 	}
 
+	/** Private methods */
+
 	/**
 	 * Ensures that this Template instance has not been destroyed.
 	 * @private
@@ -397,47 +399,70 @@ export class TemplateMemory {
 	 * @throws {Error} If the sheet does not exist.
 	 * @experimental This API is experimental and might change in future versions.
 	 */
-	#removeSheets(data: {
+	async #removeSheets(data: {
 		sheetNames?: string[];
 		sheetIndexes?: number[];
-	}): void {
+	}): Promise<void> {
 		const { sheetIndexes = [], sheetNames = [] } = data;
 
-		for (const sheetIndex of sheetIndexes) {
+		// first get index of sheets to remove
+		const sheetIndexesToRemove: Set<number> = new Set(sheetIndexes);
+
+		for (const sheetName of sheetNames) {
+			const sheetPath = await this.#getSheetPathByName(sheetName);
+
+			const sheetIndexMatch = sheetPath.match(/sheet(\d+)\.xml$/);
+
+			if (!sheetIndexMatch || !sheetIndexMatch[1]) {
+				throw new Error(`Sheet "${sheetName}" not found`);
+			}
+
+			const sheetIndex = parseInt(sheetIndexMatch[1], 10);
+
+			sheetIndexesToRemove.add(sheetIndex);
+		}
+
+		// Remove sheets by index
+		for (const sheetIndex of sheetIndexesToRemove.values()) {
 			const sheetPath = `xl/worksheets/sheet${sheetIndex}.xml`;
 
 			if (!this.files[sheetPath]) {
 				continue;
 			}
 
+			// remove sheet file
 			delete this.files[sheetPath];
 
-			if (this.files["xl/workbook.xml"]) {
-				this.files["xl/workbook.xml"] = Buffer.from(Utils.Common.removeSheetFromWorkbook(
-					this.files["xl/workbook.xml"].toString(),
+			// remove sheet from workbook
+			const workbook = this.files[this.#excelKeys.workbook];
+			if (workbook) {
+				this.files[this.#excelKeys.workbook] = Buffer.from(Utils.Common.removeSheetFromWorkbook(
+					workbook.toString(),
 					sheetIndex,
 				));
 			}
 
-			if (this.files["xl/_rels/workbook.xml.rels"]) {
-				this.files["xl/_rels/workbook.xml.rels"] = Buffer.from(Utils.Common.removeSheetFromRels(
-					this.files["xl/_rels/workbook.xml.rels"].toString(),
+			// remove sheet from workbook relations
+			const workbookRels = this.files[this.#excelKeys.workbookRels];
+			if (workbookRels) {
+				this.files[this.#excelKeys.workbookRels] = Buffer.from(Utils.Common.removeSheetFromRels(
+					workbookRels.toString(),
 					sheetIndex,
 				));
 			}
 
-			if (this.files["[Content_Types].xml"]) {
-				this.files["[Content_Types].xml"] = Buffer.from(Utils.Common.removeSheetFromContentTypes(
-					this.files["[Content_Types].xml"].toString(),
+			// remove sheet from content types
+			const contentTypes = this.files[this.#excelKeys.contentTypes];
+			if (contentTypes) {
+				this.files[this.#excelKeys.contentTypes] = Buffer.from(Utils.Common.removeSheetFromContentTypes(
+					contentTypes.toString(),
 					sheetIndex,
 				));
 			}
-		}
-
-		for (const sheetName of sheetNames) {
-			Utils.Common.removeSheetByName(this.files, sheetName);
 		}
 	}
+
+	/** Public methods */
 
 	/**
 	 * Copies a sheet from the template to a new name.
@@ -566,14 +591,14 @@ export class TemplateMemory {
 	 * @param replacements - An object where keys represent placeholder paths and values are the replacements.
 	 * @returns A promise that resolves when the substitution is complete.
 	 */
-	substitute(sheetName: string, replacements: Record<string, unknown>): Promise<void> {
+	async substitute(sheetName: string, replacements: Record<string, unknown>): Promise<void> {
 		this.#ensureNotProcessing();
 		this.#ensureNotDestroyed();
 
 		this.#isProcessing = true;
 
 		try {
-			return this.#substitute(sheetName, replacements);
+			await this.#substitute(sheetName, replacements);
 		} finally {
 			this.#isProcessing = false;
 		}
@@ -657,7 +682,7 @@ export class TemplateMemory {
 				updatedXml = sheetXml.replace(/<worksheet[^>]*>/, (match) => `${match}<sheetData>${rowsXml}</sheetData>`);
 			}
 
-			await this.#set(sheetPath, Buffer.from(updatedXml));
+			await this.#set(sheetPath, Buffer.from(Utils.updateDimension(updatedXml)));
 		} finally {
 			this.#isProcessing = false;
 		}
@@ -700,6 +725,31 @@ export class TemplateMemory {
 
 			let inserted = false;
 
+			const initialDimension = sheetXml.match(/<dimension\s+ref="[^"]*"/)?.[0] || "";
+
+			const dimension = {
+				maxColumn: "A",
+				maxRow: 1,
+				minColumn: "A",
+				minRow: 1,
+			};
+
+			if (initialDimension) {
+				const dimensionMatch = initialDimension.match(/<dimension\s+ref="([^"]*)"/);
+				if (dimensionMatch) {
+					const dimensionRef = dimensionMatch[1];
+
+					if (dimensionRef) {
+						const [min, max] = dimensionRef.split(":");
+
+						dimension.minColumn = min!.slice(0, 1);
+						dimension.minRow = parseInt(min!.slice(1));
+						dimension.maxColumn = max!.slice(0, 1);
+						dimension.maxRow = parseInt(max!.slice(1));
+					}
+				}
+			}
+
 			// --- Case 1: <sheetData>...</sheetData> on one line ---
 			const singleLineMatch = sheetXml.match(/(<sheetData[^>]*>)(.*)(<\/sheetData>)/);
 			if (!inserted && singleLineMatch) {
@@ -723,7 +773,15 @@ export class TemplateMemory {
 					}
 				}
 
-				const { rowNumber: actualRowNumber } = await Utils.writeRowsToStream(output, rows, maxRowNumber);
+				const { dimension: newDimension, rowNumber: actualRowNumber } = await Utils.writeRowsToStream(output, rows, maxRowNumber);
+
+				if (Utils.compareColumns(newDimension.maxColumn, dimension.maxColumn) > 0) {
+					dimension.maxColumn = newDimension.maxColumn;
+				}
+
+				if (newDimension.maxRow > dimension.maxRow) {
+					dimension.maxRow = newDimension.maxRow;
+				}
 
 				if (innerRows) {
 					const filtered = Utils.getRowsAbove(innerRowsMap, actualRowNumber);
@@ -743,7 +801,17 @@ export class TemplateMemory {
 
 				output.write(sheetXml.slice(0, matchIndex));
 				output.write("<sheetData>");
-				await Utils.writeRowsToStream(output, rows, maxRowNumber);
+
+				const { dimension: newDimension } = await Utils.writeRowsToStream(output, rows, maxRowNumber);
+
+				if (Utils.compareColumns(newDimension.maxColumn, dimension.maxColumn) > 0) {
+					dimension.maxColumn = newDimension.maxColumn;
+				}
+
+				if (newDimension.maxRow > dimension.maxRow) {
+					dimension.maxRow = newDimension.maxRow;
+				}
+
 				output.write("</sheetData>");
 				output.write(sheetXml.slice(matchIndex + match[0].length));
 				inserted = true;
@@ -777,7 +845,15 @@ export class TemplateMemory {
 					}
 				}
 
-				const { rowNumber: actualRowNumber } = await Utils.writeRowsToStream(output, rows, Utils.getMaxRowNumber(innerRows));
+				const { dimension: newDimension, rowNumber: actualRowNumber } = await Utils.writeRowsToStream(output, rows, Utils.getMaxRowNumber(innerRows));
+
+				if (Utils.compareColumns(newDimension.maxColumn, dimension.maxColumn) > 0) {
+					dimension.maxColumn = newDimension.maxColumn;
+				}
+
+				if (newDimension.maxRow > dimension.maxRow) {
+					dimension.maxRow = newDimension.maxRow;
+				}
 
 				if (innerRows) {
 					const filtered = Utils.getRowsAbove(innerRowsMap, actualRowNumber);
@@ -791,9 +867,21 @@ export class TemplateMemory {
 
 			if (!inserted) throw new Error("Failed to locate <sheetData> for insertion");
 
-			// Save the buffer to the sheet
-			this.files[sheetPath] = output.toBuffer();
+			let result = output.toBuffer();
 
+			// update dimension
+			{
+				const target = initialDimension;
+				const refRange = `${dimension.minColumn}${dimension.minRow}:${dimension.maxColumn}${dimension.maxRow}`;
+				const replacement = `<dimension ref="${refRange}"`;
+
+				if (target) {
+					result = Buffer.from(result.toString().replace(target, replacement));
+				}
+			}
+
+			// Save the buffer to the sheet
+			this.files[sheetPath] = result;
 		} finally {
 			this.#isProcessing = false;
 		}
@@ -863,19 +951,19 @@ export class TemplateMemory {
 	 * @param {number} [data.gap=0] - The number of empty rows to insert between each added section.
 	 * @returns {void}
 	 */
-	mergeSheets(data: {
+	async mergeSheets(data: {
 		additions: { sheetIndexes?: number[]; sheetNames?: string[] };
 		baseSheetIndex?: number;
 		baseSheetName?: string;
 		gap?: number;
-	}): void {
+	}): Promise<void> {
 		this.#ensureNotProcessing();
 		this.#ensureNotDestroyed();
 
 		this.#isProcessing = true;
 
 		try {
-			this.#mergeSheets(data);
+			await this.#mergeSheets(data);
 		} finally {
 			this.#isProcessing = false;
 		}
@@ -889,21 +977,23 @@ export class TemplateMemory {
 	 * @param {string[]} [data.sheetNames] - The names of the sheets to remove.
 	 * @returns {void}
 	 */
-	removeSheets(data: {
+	async removeSheets(data: {
 		sheetNames?: string[];
 		sheetIndexes?: number[];
-	}): void {
+	}): Promise<void> {
 		this.#ensureNotProcessing();
 		this.#ensureNotDestroyed();
 
 		this.#isProcessing = true;
 
 		try {
-			this.#removeSheets(data);
+			await this.#removeSheets(data);
 		} finally {
 			this.#isProcessing = false;
 		}
 	}
+
+	/** Static methods */
 
 	/**
 	 * Creates a Template instance from an Excel file source.

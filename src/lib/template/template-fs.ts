@@ -63,6 +63,8 @@ export class TemplateFs {
 		this.destination = destination;
 	}
 
+	/** Private methods */
+
 	/**
 	 * Removes the temporary directory created by this Template instance.
 	 * @private
@@ -230,6 +232,20 @@ export class TemplateFs {
 		await fs.writeFile(fullPath, Buffer.isBuffer(content) ? content : Buffer.from(content));
 	}
 
+	/**
+	 * Replaces placeholders in the given sheet with values from the replacements map.
+	 *
+	 * The function searches for placeholders in the format `${key}` within the sheet
+	 * content, where `key` corresponds to a path in the replacements object.
+	 * If a value is found for the key, it replaces the placeholder with the value.
+	 * If no value is found, the original placeholder remains unchanged.
+	 *
+	 * @param sheetName - The name of the sheet to be replaced.
+	 * @param replacements - An object where keys represent placeholder paths and values are the replacements.
+	 * @returns A promise that resolves when the substitution is complete.
+	 * @throws {Error} If the template instance has been destroyed.
+	 * @experimental This API is experimental and might change in future versions.
+	 */
 	async #substitute(sheetName: string, replacements: Record<string, unknown>): Promise<void> {
 		const sharedStringsPath = this.#excelKeys.sharedStrings;
 		const sheetPath = await this.#getSheetPathByName(sheetName);
@@ -268,6 +284,79 @@ export class TemplateFs {
 	}
 
 	/**
+	 * Removes sheets from the workbook.
+	 *
+	 * @param {Object} data - The data for sheet removal.
+	 * @param {number[]} [data.sheetIndexes] - The 1-based indexes of the sheets to remove.
+	 * @param {string[]} [data.sheetNames] - The names of the sheets to remove.
+	 * @returns {void}
+	 *
+	 * @throws {Error} If the template instance has been destroyed.
+	 * @throws {Error} If the sheet does not exist.
+	 * @experimental This API is experimental and might change in future versions.
+	 */
+	async #removeSheets(data: {
+		sheetNames?: string[];
+		sheetIndexes?: number[];
+	}): Promise<void> {
+		const { sheetIndexes = [], sheetNames = [] } = data;
+
+		// first get index of sheets to remove
+		const sheetIndexesToRemove: Set<number> = new Set(sheetIndexes);
+
+		for (const sheetName of sheetNames) {
+			const sheetPath = await this.#getSheetPathByName(sheetName);
+
+			const sheetIndexMatch = sheetPath.match(/sheet(\d+)\.xml$/);
+
+			if (!sheetIndexMatch || !sheetIndexMatch[1]) {
+				throw new Error(`Sheet "${sheetName}" not found`);
+			}
+
+			const sheetIndex = parseInt(sheetIndexMatch[1], 10);
+
+			sheetIndexesToRemove.add(sheetIndex);
+		}
+
+		// Remove sheets by index
+		for (const sheetIndex of sheetIndexesToRemove.values()) {
+			const sheetPath = `xl/worksheets/sheet${sheetIndex}.xml`;
+
+			if (!this.fileKeys.has(sheetPath)) {
+				continue;
+			}
+
+			// remove sheet file
+			await fs.unlink(path.join(this.destination, ...sheetPath.split("/")));
+			this.fileKeys.delete(sheetPath);
+
+			// remove sheet from workbook
+			if (this.fileKeys.has(this.#excelKeys.workbook)) {
+				this.#set(this.#excelKeys.workbook, Buffer.from(Utils.Common.removeSheetFromWorkbook(
+					this.#readFile(this.#excelKeys.workbook).toString(),
+					sheetIndex,
+				)));
+			}
+
+			// remove sheet from workbook relations
+			if (this.fileKeys.has(this.#excelKeys.workbookRels)) {
+				this.#set(this.#excelKeys.workbookRels, Buffer.from(Utils.Common.removeSheetFromRels(
+					this.#readFile(this.#excelKeys.workbookRels).toString(),
+					sheetIndex,
+				)));
+			}
+
+			// remove sheet from content types
+			if (this.fileKeys.has(this.#excelKeys.contentTypes)) {
+				this.#set(this.#excelKeys.contentTypes, Buffer.from(Utils.Common.removeSheetFromContentTypes(
+					this.#readFile(this.#excelKeys.contentTypes).toString(),
+					sheetIndex,
+				)));
+			}
+		}
+	}
+
+	/**
 	 * Validates the template by checking all required files exist.
 	 *
 	 * @returns {Promise<void>}
@@ -285,6 +374,8 @@ export class TemplateFs {
 			}
 		}
 	}
+
+	/** Public methods */
 
 	/**
 	 * Copies a sheet from the template to a new name.
@@ -401,14 +492,14 @@ export class TemplateFs {
 	 * @param replacements - An object where keys represent placeholder paths and values are the replacements.
 	 * @returns A promise that resolves when the substitution is complete.
 	 */
-	substitute(sheetName: string, replacements: Record<string, unknown>): Promise<void> {
+	async substitute(sheetName: string, replacements: Record<string, unknown>): Promise<void> {
 		this.#ensureNotProcessing();
 		this.#ensureNotDestroyed();
 
 		this.#isProcessing = true;
 
 		try {
-			return this.#substitute(sheetName, replacements);
+			await this.#substitute(sheetName, replacements);
 		} finally {
 			this.#isProcessing = false;
 		}
@@ -617,7 +708,7 @@ export class TemplateFs {
 
 						const { dimension: newDimension, rowNumber: actualRowNumber } = await Utils.writeRowsToStream(output, rows, maxRowNumber);
 
-						if (compareColumns(newDimension.maxColumn, dimension.maxColumn) > 0) {
+						if (Utils.compareColumns(newDimension.maxColumn, dimension.maxColumn) > 0) {
 							dimension.maxColumn = newDimension.maxColumn;
 						}
 
@@ -680,7 +771,7 @@ export class TemplateFs {
 					// new <row>
 					const { dimension: newDimension, rowNumber: actualRowNumber } = await Utils.writeRowsToStream(output, rows, maxRowNumber);
 
-					if (compareColumns(newDimension.maxColumn, dimension.maxColumn) > 0) {
+					if (Utils.compareColumns(newDimension.maxColumn, dimension.maxColumn) > 0) {
 						dimension.maxColumn = newDimension.maxColumn;
 					}
 
@@ -727,7 +818,7 @@ export class TemplateFs {
 					// Prepare the rows
 					const { dimension: newDimension } = await Utils.writeRowsToStream(output, rows, maxRowNumber);
 
-					if (compareColumns(newDimension.maxColumn, dimension.maxColumn) > 0) {
+					if (Utils.compareColumns(newDimension.maxColumn, dimension.maxColumn) > 0) {
 						dimension.maxColumn = newDimension.maxColumn;
 					}
 
@@ -810,6 +901,30 @@ export class TemplateFs {
 			}
 
 			await fs.unlink(tempPath);
+		} finally {
+			this.#isProcessing = false;
+		}
+	}
+
+	/**
+	 * Removes sheets from the workbook.
+	 *
+	 * @param {Object} data
+	 * @param {number[]} [data.sheetIndexes] - The 1-based indexes of the sheets to remove.
+	 * @param {string[]} [data.sheetNames] - The names of the sheets to remove.
+	 * @returns {void}
+	 */
+	async removeSheets(data: {
+		sheetNames?: string[];
+		sheetIndexes?: number[];
+	}): Promise<void> {
+		this.#ensureNotProcessing();
+		this.#ensureNotDestroyed();
+
+		this.#isProcessing = true;
+
+		try {
+			await this.#removeSheets(data);
 		} finally {
 			this.#isProcessing = false;
 		}
@@ -920,6 +1035,8 @@ export class TemplateFs {
 		}
 	}
 
+	/** Static methods */
+
 	/**
 	 * Creates a Template instance from an Excel file source.
 	 * Removes any existing files in the destination directory.
@@ -970,8 +1087,3 @@ export class TemplateFs {
 		return new TemplateFs(new Set(Object.keys(files)), destinationWithUuid);
 	}
 }
-
-const compareColumns = (a: string, b: string): number => {
-	if (a === b) return 0;
-	return a.length === b.length ? (a < b ? -1 : 1) : (a.length < b.length ? -1 : 1);
-};
