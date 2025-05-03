@@ -1,3 +1,10 @@
+## [1.8.1](https://github.com/JS-AK/excel-toolbox/compare/v1.8.0...v1.8.1) (2025-05-03)
+
+
+### Bug Fixes
+
+* added check hasArraysInReplacements in substitute ([f1c672e](https://github.com/JS-AK/excel-toolbox/commit/f1c672e9c7ab135c6dbbd65ca302dd9a507dc4cf))
+
 # [1.8.0](https://github.com/JS-AK/excel-toolbox/compare/v1.7.0...v1.8.0) (2025-04-30)
 
 
