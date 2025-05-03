@@ -8,6 +8,7 @@ export * from "./column-index-to-letter.js";
 export * from "./compare-columns.js";
 export * from "./escape-xml.js";
 export * from "./extract-xml-declaration.js";
+export * from "./found-arrays-in-replacements.js";
 export * from "./get-by-path.js";
 export * from "./get-max-row-number.js";
 export * from "./get-rows-above.js";

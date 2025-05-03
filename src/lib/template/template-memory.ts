@@ -256,8 +256,9 @@ export class TemplateMemory {
 			const TABLE_REGEX = /\$\{table:([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\}/g;
 
 			const hasTablePlaceholders = TABLE_REGEX.test(sharedStringsContent) || TABLE_REGEX.test(sheetContent);
+			const hasArraysInReplacements = Utils.foundArraysInReplacements(replacements);
 
-			if (hasTablePlaceholders) {
+			if (hasTablePlaceholders && hasArraysInReplacements) {
 				const result = this.#expandTableRows(sheetContent, sharedStringsContent, replacements);
 
 				sheetContent = result.sheet;
