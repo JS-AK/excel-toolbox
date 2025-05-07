@@ -19,7 +19,6 @@ export function processRows(data: {
 	sharedIndexMap: Map<string, number>;
 	mergeCellMatches: { from: string; to: string }[];
 	sharedStrings: string[];
-	sheetMergeCells: string[];
 	sheetXml: string;
 }) {
 	const {
@@ -27,10 +26,17 @@ export function processRows(data: {
 		replacements,
 		sharedIndexMap,
 		sharedStrings,
-		sheetMergeCells,
 		sheetXml,
 	} = data;
 	const TABLE_REGEX = /\$\{table:([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\}/g;
+
+	let isTableReplacementsFound = false;
+
+	// Array for storing merge cells
+	const sheetMergeCells = new Set<string>();
+
+	// Set for storing processed rows
+	const rowsProcessed = new Set<number>();
 
 	// Array for storing resulting XML rows
 	const resultRows: string[] = [];
@@ -42,7 +48,7 @@ export function processRows(data: {
 	let rowShift = 0;
 
 	// Regular expression for finding <row> elements
-	const rowRegex = /<row[^>]*?>[\s\S]*?<\/row>/g;
+	const rowRegex = /<row\b[^>]*\/>|<row\b[^>]*>[\s\S]*?<\/row>/g;
 
 	// Process each <row> element
 	for (const match of sheetXml.matchAll(rowRegex)) {
@@ -64,6 +70,9 @@ export function processRows(data: {
 
 		// Get row number from r attribute
 		const originalRowNumber = parseInt(fullRow.match(/<row[^>]* r="(\d+)"/)?.[1] ?? "1", 10);
+
+		// Add the row number to the set of processed rows
+		rowsProcessed.add(originalRowNumber);
 
 		// Update row number based on rowShift
 		const shiftedRowNumber = originalRowNumber + rowShift;
@@ -106,16 +115,25 @@ export function processRows(data: {
 				const [, fromCol, fromRow] = from.match(/^([A-Z]+)(\d+)$/)!;
 				const [, toCol] = to.match(/^([A-Z]+)(\d+)$/)!;
 
+				// Consider rows that were skipped but have a mergeCell
+				// and don't add those that have already been added
+				if (Number(fromRow) < calculatedRowNumber && !rowsProcessed.has(Number(fromRow))) {
+					sheetMergeCells.add(`<mergeCell ref="${from}:${to}"/>`);
+					rowsProcessed.add(Number(fromRow));
+				}
+
 				if (Number(fromRow) === calculatedRowNumber) {
 					const newFrom = `${fromCol}${shiftedRowNumber}`;
 					const newTo = `${toCol}${shiftedRowNumber}`;
 
-					sheetMergeCells.push(`<mergeCell ref="${newFrom}:${newTo}"/>`);
+					sheetMergeCells.add(`<mergeCell ref="${newFrom}:${newTo}"/>`);
 				}
 			}
 
 			continue;
 		}
+
+		isTableReplacementsFound = true;
 
 		// Get the table name from the first placeholder
 		const firstMatch = tablePlaceholders[0];
@@ -183,10 +201,11 @@ export function processRows(data: {
 			for (const { from, to } of mergeCellsToDuplicate) {
 				const [, colFrom, rowFrom] = from.match(/^([A-Z]+)(\d+)$/)!;
 				const [, colTo, rowTo] = to.match(/^([A-Z]+)(\d+)$/)!;
+
 				const newFrom = `${colFrom}${Number(rowFrom) + i}`;
 				const newTo = `${colTo}${Number(rowTo) + i}`;
 
-				sheetMergeCells.push(`<mergeCell ref="${newFrom}:${newTo}"/>`);
+				sheetMergeCells.add(`<mergeCell ref="${newFrom}:${newTo}"/>`);
 			}
 		}
 
@@ -208,5 +227,11 @@ export function processRows(data: {
 		}
 	}
 
-	return { lastIndex, resultRows, rowShift };
-};
+	return {
+		isTableReplacementsFound,
+		lastIndex,
+		resultRows,
+		rowShift,
+		sheetMergeCells: Array.from(sheetMergeCells),
+	};
+}

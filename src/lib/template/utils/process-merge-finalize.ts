@@ -1,5 +1,20 @@
 import { updateDimension } from "./update-dimension.js";
 
+export type ProcessMergeFinalizeData = {
+	initialMergeCells: string[];
+	lastIndex: number;
+	resultRows: string[];
+	sharedStrings: string[];
+	sharedStringsHeader: string | null;
+	sheetMergeCells: string[];
+	sheetXml: string;
+};
+
+export type ProcessMergeFinalizeResult = {
+	shared: string;
+	sheet: string;
+};
+
 /**
  * Finalizes the processing of the merged sheet by updating the merge cells and
  * inserting them into the sheet XML. It also returns the modified sheet XML and
@@ -8,10 +23,8 @@ import { updateDimension } from "./update-dimension.js";
  * @param {object} data - An object containing the following properties:
  *   - `initialMergeCells`: The initial merge cells from the original sheet.
  *   - `lastIndex`: The last processed position in the sheet XML.
- *   - `mergeCellMatches`: An array of objects with `from` and `to` properties,
  *     describing the merge cells.
  *   - `resultRows`: An array of processed XML rows.
- *   - `rowShift`: The total row shift.
  *   - `sharedStrings`: An array of shared strings.
  *   - `sharedStringsHeader`: The XML declaration of the shared strings.
  *   - `sheetMergeCells`: An array of merge cell XML strings.
@@ -21,42 +34,16 @@ import { updateDimension } from "./update-dimension.js";
  *   - `shared`: The modified shared strings XML string.
  *   - `sheet`: The modified sheet XML string with updated merge cells.
  */
-export function processMergeFinalize(data: {
-	initialMergeCells: string[];
-	lastIndex: number;
-	mergeCellMatches: { from: string; to: string }[];
-	resultRows: string[];
-	rowShift: number;
-	sharedStrings: string[];
-	sharedStringsHeader: string | null;
-	sheetMergeCells: string[];
-	sheetXml: string;
-}) {
+export function processMergeFinalize(data: ProcessMergeFinalizeData): ProcessMergeFinalizeResult {
 	const {
 		initialMergeCells,
 		lastIndex,
-		mergeCellMatches,
 		resultRows,
-		rowShift,
 		sharedStrings,
 		sharedStringsHeader,
 		sheetMergeCells,
 		sheetXml,
 	} = data;
-
-	for (const { from, to } of mergeCellMatches) {
-		const [, fromCol, fromRow] = from.match(/^([A-Z]+)(\d+)$/)!;
-		const [, toCol, toRow] = to.match(/^([A-Z]+)(\d+)$/)!;
-
-		const fromRowNum = Number(fromRow);
-		// These rows have already been processed, don't add duplicates
-		if (fromRowNum <= lastIndex) continue;
-
-		const newFrom = `${fromCol}${fromRowNum + rowShift}`;
-		const newTo = `${toCol}${Number(toRow) + rowShift}`;
-
-		sheetMergeCells.push(`<mergeCell ref="${newFrom}:${newTo}"/>`);
-	}
 
 	resultRows.push(sheetXml.slice(lastIndex));
 

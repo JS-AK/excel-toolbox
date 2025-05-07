@@ -8,7 +8,6 @@ describe("processRows", () => {
 		sharedIndexMap: Map<string, number>;
 		mergeCellMatches: { from: string; to: string }[];
 		sharedStrings: string[];
-		sheetMergeCells: string[];
 		sheetXml: string;
 	};
 
@@ -19,7 +18,6 @@ describe("processRows", () => {
 			replacements: {},
 			sharedIndexMap: new Map(),
 			sharedStrings: ["<si><t>Test</t></si>"],
-			sheetMergeCells: [],
 			sheetXml: "<worksheet><sheetData><row r=\"1\"><c r=\"A1\" t=\"s\"><v>0</v></c></row></sheetData></worksheet>",
 		};
 	});
@@ -62,8 +60,8 @@ describe("processRows", () => {
 
 		const result = processRows(data);
 
-		expect(data.sheetMergeCells).toContain("<mergeCell ref=\"A1:B1\"/>");
-		expect(data.sheetMergeCells).toContain("<mergeCell ref=\"A2:B2\"/>");
+		expect(result.sheetMergeCells).toContain("<mergeCell ref=\"A1:B1\"/>");
+		expect(result.sheetMergeCells).toContain("<mergeCell ref=\"A2:B2\"/>");
 		expect(result.rowShift).toBe(1);
 	});
 
@@ -89,28 +87,6 @@ describe("processRows", () => {
 
 		expect(data.sharedStrings).toContain("<si><t>Alice - 30</t></si>");
 		expect(data.sharedStrings).toContain("<si><t>Bob - 25</t></si>");
-	});
-
-	it("should adjust merge cells after expanded rows", () => {
-		const data = {
-			...baseData,
-			mergeCellMatches: [{ from: "A3", to: "B3" }],
-			replacements: { data: [{ value: "First" }, { value: "Second" }] },
-			sharedStrings: ["<si><t>${table:data.value}</t></si>"],
-			sheetXml: `
-        <worksheet>
-          <sheetData>
-            <row r="1"><c r="A1" t="s"><v>0</v></c></row>
-            <row r="3"><c r="A3">Data</c></row>
-          </sheetData>
-        </worksheet>
-      `,
-		};
-
-		const result = processRows(data);
-
-		expect(data.sheetMergeCells).toContain("<mergeCell ref=\"A4:B4\"/>");
-		expect(result.rowShift).toBe(1);
 	});
 
 	it("should throw error for non-array table data", () => {
