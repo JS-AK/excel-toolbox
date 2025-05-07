@@ -1,3 +1,10 @@
+## [1.8.2](https://github.com/JS-AK/excel-toolbox/compare/v1.8.1...v1.8.2) (2025-05-07)
+
+
+### Bug Fixes
+
+* updated expandTableRows processRows ([b16ffcb](https://github.com/JS-AK/excel-toolbox/commit/b16ffcbcf781226f5f4311e1cf8b6a1fc583232b))
+
 ## [1.8.1](https://github.com/JS-AK/excel-toolbox/compare/v1.8.0...v1.8.1) (2025-05-03)
 
 
