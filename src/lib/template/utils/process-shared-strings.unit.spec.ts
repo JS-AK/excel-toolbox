@@ -8,7 +8,6 @@ describe("processSharedStrings", () => {
 		expect(result.sharedStrings).toEqual([]);
 		expect(result.sharedIndexMap.size).toBe(0);
 		expect(result.sharedStringsHeader).toBeNull();
-		expect(result.sheetMergeCells).toEqual([]);
 	});
 
 	it("should parse basic shared strings", () => {
@@ -74,21 +73,6 @@ describe("processSharedStrings", () => {
 		expect(result.sharedStrings[0]).toBe("<si><t>&amp;&lt;&gt;</t></si>");
 		expect(result.sharedIndexMap.get("<t>&amp;&lt;&gt;</t>")).toBe(0);
 	});
-
-	// it("should maintain correct indexes for duplicate content", () => {
-	// 	const xml = `
-  //     <sst>
-  //       <si><t>Duplicate</t></si>
-  //       <si><t>Duplicate</t></si>
-  //       <si><t>Unique</t></si>
-  //     </sst>
-  //   `;
-	// 	const result = processSharedStrings(xml);
-
-	// 	expect(result.sharedStrings.length).toBe(3);
-	// 	expect(result.sharedIndexMap.get("<t>Duplicate</t>")).toBe(0); // First occurrence
-	// 	expect(result.sharedIndexMap.get("<t>Unique</t>")).toBe(2);
-	// });
 
 	it("should handle XML with namespace declarations", () => {
 		const xml = `

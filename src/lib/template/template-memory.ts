@@ -89,7 +89,7 @@ export class TemplateMemory {
 		sheetXml: string,
 		sharedStringsXml: string,
 		replacements: Record<string, unknown>,
-	): { sheet: string; shared: string } {
+	): { sheet: string; shared: string } | null {
 		const {
 			initialMergeCells,
 			mergeCellMatches,
@@ -100,29 +100,36 @@ export class TemplateMemory {
 			sharedIndexMap,
 			sharedStrings,
 			sharedStringsHeader,
-			sheetMergeCells,
 		} = Utils.processSharedStrings(sharedStringsXml);
 
-		const { lastIndex, resultRows, rowShift } = Utils.processRows({
+		const {
+			isTableReplacementsFound,
+			lastIndex,
+			resultRows,
+			sheetMergeCells,
+		} = Utils.processRows({
 			mergeCellMatches,
 			replacements,
 			sharedIndexMap,
 			sharedStrings,
-			sheetMergeCells,
 			sheetXml: modifiedXml,
 		});
 
-		return Utils.processMergeFinalize({
+		if (!isTableReplacementsFound) {
+			return null;
+		}
+
+		const { shared, sheet } = Utils.processMergeFinalize({
 			initialMergeCells,
 			lastIndex,
-			mergeCellMatches,
 			resultRows,
-			rowShift,
 			sharedStrings,
 			sharedStringsHeader,
 			sheetMergeCells,
 			sheetXml: modifiedXml,
 		});
+
+		return { shared, sheet };
 	}
 
 	/**
@@ -261,8 +268,10 @@ export class TemplateMemory {
 			if (hasTablePlaceholders && hasArraysInReplacements) {
 				const result = this.#expandTableRows(sheetContent, sharedStringsContent, replacements);
 
-				sheetContent = result.sheet;
-				sharedStringsContent = result.shared;
+				if (result) {
+					sheetContent = result.sheet;
+					sharedStringsContent = result.shared;
+				}
 			}
 		}
 

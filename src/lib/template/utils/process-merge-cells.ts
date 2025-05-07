@@ -34,6 +34,19 @@ export function processMergeCells(sheetXml: string) {
 	// Remove the <mergeCells> block from the XML
 	const modifiedXml = sheetXml.replace(mergeCellsBlockRegex, "");
 
+	// Sort mergeCellMatches by from by number row
+	mergeCellMatches.sort((a, b) => {
+		const rowA = parseInt(a.from.match(/\d+/)?.[0] ?? "0");
+		const rowB = parseInt(b.from.match(/\d+/)?.[0] ?? "0");
+		return rowA - rowB;
+	});
+
+	// Create mergeCellsByTags array
+	const mergeCellsByTags: string[] = [];
+	for (const mergeCell of mergeCellMatches) {
+		mergeCellsByTags.push(`<mergeCell ref="${mergeCell.from}:${mergeCell.to}" />`);
+	}
+
 	return {
 		initialMergeCells,
 		mergeCellMatches,

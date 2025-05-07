@@ -15,9 +15,6 @@ import { extractXmlDeclaration } from "./extract-xml-declaration.js";
  * @returns An object with the four properties above
  */
 export function processSharedStrings(sharedStringsXml: string) {
-	// Final list of merged cells with all changes
-	const sheetMergeCells: string[] = [];
-
 	// Array for storing shared strings
 	const sharedStrings: string[] = [];
 	const sharedStringsHeader = extractXmlDeclaration(sharedStringsXml);
@@ -43,6 +40,5 @@ export function processSharedStrings(sharedStringsXml: string) {
 		sharedIndexMap,
 		sharedStrings,
 		sharedStringsHeader,
-		sheetMergeCells,
 	};
 };
