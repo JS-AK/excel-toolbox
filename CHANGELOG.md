@@ -1,3 +1,10 @@
+## [1.8.3](https://github.com/JS-AK/excel-toolbox/compare/v1.8.2...v1.8.3) (2025-08-09)
+
+
+### Bug Fixes
+
+* updated zip utils to-byte fn ([bd2f04b](https://github.com/JS-AK/excel-toolbox/commit/bd2f04b8bfc01632bf0ee5ee64ccaa0933b68dca))
+
 ## [1.8.2](https://github.com/JS-AK/excel-toolbox/compare/v1.8.1...v1.8.2) (2025-05-07)
 
 
