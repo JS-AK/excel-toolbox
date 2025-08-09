@@ -44,7 +44,9 @@
     "lint": "eslint . --ext .ts",
     "postbuild:esm": "node scripts/write-esm-package.js",
     "postbuild:cjs": "node scripts/write-cjs-package.js",
-    "test": "vitest run",
+    "test:unit": "vitest run --config vitest.unit.config.js",
+    "test:integration": "vitest run --config vitest.integration.config.js",
+    "test": "npm run test:unit && npm run test:integration",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },

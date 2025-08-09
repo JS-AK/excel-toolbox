@@ -15,25 +15,29 @@ import { Buffer } from "node:buffer";
  * @returns {Buffer} - A new Buffer of exactly `len` bytes containing:
  *        1. The value's bytes in little-endian order (least significant byte first)
  *        2. Zero padding in any remaining higher-order bytes
- * @throws {RangeError} - If the value requires more bytes than `len` to represent
- *        (though this is currently not explicitly checked)
+ *
+ * @throws {RangeError} - If the length is not positive or the value is negative.
  */
 export function toBytes(value: number, len: number): Buffer {
-	// Allocate a new Buffer of the requested length, automatically zero-filled
+	if (len <= 0) throw new RangeError("Length must be a positive integer");
+	if (value < 0) throw new RangeError("Negative values are not supported");
+	if (!Number.isSafeInteger(value)) throw new RangeError("Value must be a safe integer");
+
+	// Use BigInt to correctly handle 53-bit values
+	let bigint = BigInt(value);
 	const buf = Buffer.alloc(len);
 
-	// Process each byte position from least significant to most significant
 	for (let i = 0; i < len; i++) {
-		// Store the least significant byte of the current value
-		buf[i] = value & 0xff;  // Mask to get bottom 8 bits
+		// Extract the least significant byte and assign to buffer
+		buf[i] = Number(bigint & 0xffn);
+		bigint >>= 8n;
 
-		// Right-shift the value by 8 bits to process the next byte
-		// Note: This uses unsigned right shift (>>> would be signed)
-		value >>= 8;
-
-		// If the loop completes with value != 0, we've overflowed the buffer length,
-		// but this isn't currently checked/handled
+		// Stop early if all remaining bits are zero
+		if (bigint === 0n) break;
 	}
+
+	// If bigint is still non-zero, it means we overflowed the buffer length
+	if (bigint > 0n) throw new RangeError("Value exceeds the maximum size for the specified length");
 
 	return buf;
 }
