@@ -1,6 +1,7 @@
 import { RowData } from "./sheet.js";
 import { buildContentTypesXml } from "./build-content-types-xml.js";
 import { buildSharedStringsXml } from "./build-shared-strings-xml.js";
+import { buildStylesXml } from "./build-styles-xml.js";
 import { buildWorkbookRels } from "./build-workbook-rels-xml.js";
 import { buildWorkbookXml } from "./build-workbook-xml.js";
 import { buildWorksheetXml } from "./build-worksheet-xml.js";
@@ -42,76 +43,9 @@ export const initializeFiles = (): ExcelFiles => {
 	].join("\n");
 
 	const workbookRelsXml = buildWorkbookRels(sheetsCount);
-
-	const stylesXml = [
-		declaration,
-		buildXml({
-			attrs: { xmlns: XML_NAMESPACES.SPREADSHEET_ML },
-			children: [
-				{
-					attrs: { count: "1" },
-					children: [
-						{
-							children: [
-								{ attrs: { val: "11" }, tag: "sz" },
-								{ attrs: { theme: "1" }, tag: "color" },
-								{ attrs: { val: "Calibri" }, tag: "name" },
-							],
-							tag: "font",
-						},
-					],
-					tag: "fonts",
-				},
-				{
-					attrs: { count: "1" },
-					children: [
-						{
-							children: [
-								{ attrs: { patternType: "none" }, tag: "patternFill" },
-							],
-							tag: "fill",
-						},
-					],
-					tag: "fills",
-				},
-				{
-					attrs: { count: "1" },
-					children: [
-						{
-							children: [
-								{ tag: "left" },
-								{ tag: "right" },
-								{ tag: "top" },
-								{ tag: "bottom" },
-							],
-							tag: "border",
-						},
-					],
-					tag: "borders",
-				},
-				{
-					attrs: { count: "1" },
-					children: [
-						{ attrs: { borderId: "0", fillId: "0", fontId: "0", numFmtId: "0" }, tag: "xf" },
-					],
-					tag: "cellStyleXfs",
-				},
-				{
-					attrs: { count: "1" },
-					children: [
-						{ attrs: { borderId: "0", fillId: "0", fontId: "0", numFmtId: "0", xfId: "0" }, tag: "xf" },
-					],
-					tag: "cellXfs",
-				},
-			],
-			tag: "styleSheet",
-		}),
-	].join("\n");
-
+	const stylesXml = buildStylesXml();
 	const sharedStringsXml = buildSharedStringsXml([]);
-
 	const workbookXml = buildWorkbookXml([{ name: "Sheet1" }]);
-
 	const worksheet = buildWorksheetXml(new Map<number, RowData>());
 
 	return {

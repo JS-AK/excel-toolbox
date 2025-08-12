@@ -1,44 +1,59 @@
 import { columnIndexToLetter, columnLetterToIndex } from "../../template/utils/index.js";
 
 const MAX_COLUMNS = 16384;
+const MAX_ROWS = 1_048_576;
 
 // Тип ячейки (Cell)
 export interface CellData {
 	value: string | number | boolean | null;
 	type?: CellType; // s = shared string, n = number, b = boolean
 
-	style?: {
-		font?: {
-			name?: string;           // Название шрифта, например "Calibri"
-			size?: number;           // Размер шрифта, например 11, 14
-			bold?: boolean;          // Жирный
-			italic?: boolean;        // Курсив
-			underline?: boolean | "single" | "double"; // Подчеркивание
-			color?: string;          // Цвет текста в формате HEX, например "#FF0000"
-		};
-		fill?: {
-			type?: "pattern";        // Пока поддерживаем patternFill
-			patternType?: string;    // Например "solid", "gray125", "none"
-			fgColor?: string;        // Цвет переднего плана (заливка) — HEX или ARGB
-			bgColor?: string;        // Цвет фона (редко используется)
-		};
-		border?: {
-			top?: BorderStyle;
-			bottom?: BorderStyle;
-			left?: BorderStyle;
-			right?: BorderStyle;
-		};
-		alignment?: {
-			horizontal?: "left" | "center" | "right" | "justify";
-			vertical?: "top" | "center" | "bottom";
-			wrapText?: boolean;
-			indent?: number;
-		};
-		numberFormat?: string;     // Формат числа, например "0.00", "dd/mm/yyyy", "$#,##0.00"
-	};
+	style?: CellStyle;
 }
 
-type CellType = "s" | "n" | "b" | "str" | "e";
+export type CellStyle = {
+	index?: number;
+	font?: {
+		name?: string;           // Название шрифта, например "Calibri"
+		size?: number;           // Размер шрифта, например 11, 14
+		bold?: boolean;          // Жирный
+		italic?: boolean;        // Курсив
+		underline?: boolean | "single" | "double"; // Подчеркивание
+		color?: string;          // Цвет текста в формате HEX, например "#FF0000"
+	};
+	fill?: {
+		type?: "pattern";        // Пока поддерживаем patternFill
+		patternType?: string;    // Например "solid", "gray125", "none"
+		fgColor?: string;        // Цвет переднего плана (заливка) — HEX или ARGB
+		bgColor?: string;        // Цвет фона (редко используется)
+	};
+	border?: {
+		top?: BorderStyle;
+		bottom?: BorderStyle;
+		left?: BorderStyle;
+		right?: BorderStyle;
+	};
+	alignment?: {
+		horizontal?: "left" | "center" | "right" | "justify";
+		vertical?: "top" | "center" | "bottom";
+		wrapText?: boolean;
+		indent?: number;
+	};
+	numberFormat?: string;     // Формат числа, например "0.00", "dd/mm/yyyy", "$#,##0.00"
+};
+
+export type CellType = "s" | "inlineStr" | "n" | "b" | "str" | "e";
+
+/*
+	s	Shared string (ссылка на sharedStrings.xml)	<v> содержит индекс строки в sharedStrings
+	inlineStr	Inline string	Вложенный элемент <is><t>текст</t></is>
+	str	Formula string result (формула)	Не для обычных текстов, а для результата формулы
+	b	Boolean	<v> — 0 или 1
+	e	Ошибка	<v> — код ошибки
+	n	Number (число)	Нет атрибута t или t="n"
+*/
+
+type CellValue = string | number | boolean | null | undefined;
 
 type BorderStyle = {
 	style: "thin" | "medium" | "thick" | "dashed" | "dotted" | "double" | "hair" | "mediumDashed" | "dashDot" | "mediumDashDot" | "dashDotDot" | "mediumDashDotDot" | "slantDashDot";
@@ -64,9 +79,17 @@ export interface SheetData {
 // Фабрика для создания пустого листа
 export function createSheet(
 	name: string,
-	addSharedString: (str: string, sheetName: string) => number,
-	removeSharedStringRef: (strIdx: number, sheetName: string) => boolean,
+	fn: {
+		addOrGetStyle: (style: CellStyle) => number;
+		addSharedString: (str: string, sheetName: string) => number;
+		removeSharedStringRef: (strIdx: number, sheetName: string) => boolean;
+	},
 ): SheetData {
+	const {
+		addOrGetStyle,
+		addSharedString,
+		removeSharedStringRef,
+	} = fn;
 	const rows = new Map<number, RowData>();
 
 	return {
@@ -78,46 +101,52 @@ export function createSheet(
 				throw new Error("Invalid rowIndex");
 			}
 
+			if (!Number.isInteger(rowIndex) || rowIndex <= 0) {
+				throw new Error("Invalid rowIndex: must be a positive integer");
+			}
+
+			if (rowIndex > MAX_ROWS) {
+				throw new Error(`Invalid rowIndex: exceeds Excel max rows (${MAX_ROWS})`);
+			}
+
 			if (!rows.has(rowIndex)) {
 				rows.set(rowIndex, { cells: new Map() });
 			}
 
-			if (typeof column === "number") {
-				if (column < 0 || column > MAX_COLUMNS) {
-					throw new Error("Invalid column number");
-				}
+			const letterColumn = typeof column === "number"
+				? columnIndexToLetter(column)
+				: column;
 
-				const oldCell = rows.get(rowIndex)?.cells.get(columnIndexToLetter(column));
-
-				// Обработка ситуации если до этого была в ячейке shared string
-				if (oldCell) {
-					if (oldCell?.type === "s" && typeof oldCell.value === "number") {
-						removeSharedStringRef(oldCell.value, name);
-					}
-				}
-
-				// Обработка shared string
-				if (cell.type === "s") {
-					const idx = addSharedString(String(cell.value ?? ""), name);
-
-					cell = { type: cell.type, value: idx };
-				}
-
-				rows.get(rowIndex)?.cells.set(columnIndexToLetter(column), cell);
-			} else {
-				if (!isValidColumn(column)) {
-					throw new Error(`Invalid column string: "${column}"`);
-				}
-
-				// Обработка shared string
-				if (cell.type === "s") {
-					const idx = addSharedString(String(cell.value ?? ""), name);
-
-					cell = { type: cell.type, value: idx };
-				}
-
-				rows.get(rowIndex)?.cells.set(column, cell);
+			if (!isValidColumn(letterColumn)) {
+				throw new Error(`Invalid column string: "${letterColumn}"`);
 			}
+
+			const oldCell = rows.get(rowIndex)?.cells.get(letterColumn);
+
+			// Обработка ситуации если до этого была в ячейке shared string
+			if (oldCell) {
+				if (oldCell?.type === "s" && typeof oldCell.value === "number") {
+					removeSharedStringRef(oldCell.value, name);
+				}
+			}
+
+			// Если не указан type — определить сам
+			cell.type = detectCellType(cell.value, cell.type);
+
+			// Обработка shared string
+			if (cell.type === "s") {
+				const idx = addSharedString(String(cell.value ?? ""), name);
+
+				cell = { ...cell, value: idx };
+			}
+
+			if (cell.style) {
+				const styleIndex = addOrGetStyle(cell.style);
+
+				cell.style.index = styleIndex;
+			}
+
+			rows.get(rowIndex)?.cells.set(letterColumn, cell);
 		},
 
 		getCell(rowIndex, column) {
@@ -160,4 +189,33 @@ function isValidColumn(column: string): boolean {
 	const idx = columnLetterToIndex(column);
 
 	return idx > 0 && idx <= MAX_COLUMNS;
+}
+
+function detectCellType(value: CellValue, explicitType?: CellType): CellType {
+	if (explicitType) {
+		return explicitType;
+	}
+
+	if (value === null || value === undefined) {
+		// Для пустых ячеек можно считать числовым типом с пустым значением
+		return "n";
+	}
+
+	if (typeof value === "number") {
+		return "n";
+	}
+
+	if (typeof value === "boolean") {
+		return "b";
+	}
+
+	if (typeof value === "string") {
+		// Проверка: если строка начинается с "=" — это формула, можно вернуть "str"
+		// Но формулы лучше обрабатывать отдельно
+		// По умолчанию — считаем inlineStr
+		return "inlineStr";
+	}
+
+	// На всякий случай fallback
+	return "inlineStr";
 }

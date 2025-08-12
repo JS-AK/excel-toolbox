@@ -27,15 +27,10 @@ export function buildWorksheetXml(rows: SheetData["rows"]): string {
 					children: Array.from(rows.entries()).map(([rowNumber, row]) => ({
 						attrs: { r: rowNumber.toString() },
 						children: Array.from(row.cells.entries()).map(([colNumber, cell]) => {
-							if (!cell.type) cell.type = "str";
-
 							const cellRef = `${colNumber}${rowNumber}`;
 
 							return {
-								attrs: {
-									r: cellRef,
-									...(cell.type ? { t: cell.type } : {}),
-								},
+								attrs: { r: cellRef, s: cell.style?.index, t: cell.type },
 								children: buildCellChildren(cell),
 								tag: "c",
 							};
@@ -54,12 +49,37 @@ function buildCellChildren(cell: CellData) {
 	if (cell.value === undefined) return [];
 
 	switch (cell.type) {
-		case "b":
-			return [{ children: [cell.value ? "1" : "0"], tag: "v" }];
+		case "b": {
+			return [{
+				children: [cell.value ? "1" : "0"],
+				tag: "v",
+			}];
+		}
+
+		case "inlineStr": {
+			// для inlineStr вложение <is><t>значение</t></is>
+			return [
+				{
+					children: [
+						{
+							children: [String(cell.value)],
+							tag: "t",
+						},
+					],
+					tag: "is",
+				},
+			];
+		}
+
 		case "s":
 		case "n":
 		case "str":
-		default:
-			return [{ children: [String(cell.value)], tag: "v" }];
+		case "e":
+		default: {
+			return [{
+				children: [String(cell.value)],
+				tag: "v",
+			}];
+		}
 	}
 }

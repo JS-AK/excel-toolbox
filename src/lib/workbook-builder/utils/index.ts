@@ -1,5 +1,6 @@
 export * from "./build-content-types-xml.js";
 export * from "./build-shared-strings-xml.js";
+export * from "./build-styles-xml.js";
 export * from "./build-workbook-rels-xml.js";
 export * from "./build-workbook-xml.js";
 export * from "./build-worksheet-xml.js";

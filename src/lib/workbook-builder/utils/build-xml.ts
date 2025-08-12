@@ -1,6 +1,6 @@
 export type XmlNode = {
 	tag: string;
-	attrs?: Record<string, string>;
+	attrs?: Record<string, string | number | undefined | null>;
 	children?: (string | XmlNode)[];
 };
 
@@ -8,6 +8,7 @@ export function buildXml(node: XmlNode, level = 0): string {
 	const { attrs = {}, children = [], tag } = node;
 
 	const attrStr = Object.entries(attrs)
+		.filter(attr => ((attr[1] !== undefined) && (attr[1] !== null)))
 		.map(([k, v]) => ` ${k}="${v}"`)
 		.join("");
 
