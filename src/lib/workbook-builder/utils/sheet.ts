@@ -80,15 +80,19 @@ export interface SheetData {
 export function createSheet(
 	name: string,
 	fn: {
-		addOrGetStyle: (style: CellStyle) => number;
+		addOrGetStyle: (style: CellStyle, sheetName: string) => number;
 		addSharedString: (str: string, sheetName: string) => number;
+		cleanupUnused: boolean; // новая опция
 		removeSharedStringRef: (strIdx: number, sheetName: string) => boolean;
+		removeStyleRef: (style: CellStyle, sheetName: string) => boolean;
 	},
 ): SheetData {
 	const {
 		addOrGetStyle,
 		addSharedString,
+		cleanupUnused,
 		removeSharedStringRef,
+		removeStyleRef,
 	} = fn;
 	const rows = new Map<number, RowData>();
 
@@ -121,12 +125,18 @@ export function createSheet(
 				throw new Error(`Invalid column string: "${letterColumn}"`);
 			}
 
-			const oldCell = rows.get(rowIndex)?.cells.get(letterColumn);
+			if (cleanupUnused) {
+				const oldCell = rows.get(rowIndex)?.cells.get(letterColumn);
 
-			// Обработка ситуации если до этого была в ячейке shared string
-			if (oldCell) {
-				if (oldCell?.type === "s" && typeof oldCell.value === "number") {
-					removeSharedStringRef(oldCell.value, name);
+				// Обработка ситуации если до этого была в ячейке shared string
+				if (oldCell) {
+					if (oldCell?.type === "s" && typeof oldCell.value === "number") {
+						removeSharedStringRef(oldCell.value, name);
+					}
+
+					if (oldCell?.style && typeof oldCell.style.index === "number") {
+						removeStyleRef(oldCell.style, name);
+					}
 				}
 			}
 
@@ -141,7 +151,7 @@ export function createSheet(
 			}
 
 			if (cell.style) {
-				const styleIndex = addOrGetStyle(cell.style);
+				const styleIndex = addOrGetStyle(cell.style, name);
 
 				cell.style.index = styleIndex;
 			}

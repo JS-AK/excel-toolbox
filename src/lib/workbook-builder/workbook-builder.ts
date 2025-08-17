@@ -8,6 +8,8 @@ import { updateDimension } from "../template/utils/update-dimension.js";
 export type CellValue = string | number | Date;
 
 export class WorkbookBuilder {
+	#cleanupUnused: boolean;
+
 	#files: Utils.ExcelFiles;
 	#sheets: Map<string, Utils.SheetData> = new Map();
 	#sharedStrings: string[] = [];
@@ -18,14 +20,22 @@ export class WorkbookBuilder {
 	#fills: NonNullable<Utils.XmlNode["children"]>;
 	#fonts: NonNullable<Utils.XmlNode["children"]>;
 	#numFmts: { formatCode: string; id: number }[];
-	#styleMap: Map<string, number> = new Map(); // JSON -> styleIndex
+	#styleMap = new Map<string, number>(); // JSON -> styleIndex
 
-	constructor() {
+	#bordersUsageMap = new Map<string, Map<string, number>>(); // border -> Set of pages
+	#cellXfsUsageMap = new Map<string, Map<string, number>>(); // cellXf -> Set of pages
+	#fillsUsageMap = new Map<string, Map<string, number>>(); // fill -> Set of pages
+	#fontsUsageMap = new Map<string, Map<string, number>>(); // font -> Set of pages
+	#numFmtsUsageMap = new Map<string, Map<string, number>>(); // numFmt -> Set of pages
+
+	constructor({ cleanupUnused = false } = {}) {
+		this.#cleanupUnused = cleanupUnused;
+
 		this.#files = Utils.initializeFiles();
 
-		// Начальная инициализация стилей
+		// Initial styles initialization
 
-		// Бордюры — базовый пустой бордер
+		// Borders — basic empty border
 		this.#borders = [
 			{
 				children: [
@@ -80,7 +90,9 @@ export class WorkbookBuilder {
 		const sheet = Utils.createSheet("Sheet1", {
 			addOrGetStyle: this.#addOrGetStyle.bind(this),
 			addSharedString: this.#addSharedString.bind(this),
+			cleanupUnused: this.#cleanupUnused,
 			removeSharedStringRef: this.#removeSharedStringRef.bind(this),
+			removeStyleRef: this.#removeStyleRef.bind(this),
 		});
 
 		this.#sheets.set("Sheet1", sheet);
@@ -102,23 +114,52 @@ export class WorkbookBuilder {
 	}
 
 	#removeSheetSharedStrings(sheetName: string) {
+		// 1. Собираем строки, которые нужно удалить
+		const stringsToRemove: string[] = [];
+
 		for (const [str, sheetsSet] of this.#sharedStringRefs) {
 			sheetsSet.delete(sheetName);
-
 			if (sheetsSet.size === 0) {
-				// Удаляем строку из рефов и из массива sharedStrings
-				this.#sharedStringRefs.delete(str);
-
-				const idx = this.#sharedStrings.indexOf(str);
-
-				if (idx !== -1) {
-					this.#sharedStrings.splice(idx, 1);
-				}
+				stringsToRemove.push(str);
 			}
 		}
 
-		// После удаления из массива sharedStrings нужна переиндексация
-		this.#reindexSharedStrings();
+		if (stringsToRemove.length === 0) return;
+
+		// 2. Строим карту старых индексов → новых
+		const oldToNew = new Map<number, number>();
+		let newIdx = 0;
+
+		for (let oldIdx = 0; oldIdx < this.#sharedStrings.length; oldIdx++) {
+			const str = this.#sharedStrings[oldIdx];
+			if (!str) continue; // пропускаем, если undefined
+			if (stringsToRemove.includes(str)) {
+				// Удаляем строку из рефов
+				this.#sharedStringRefs.delete(str);
+				continue; // индекс не учитывается
+			}
+			oldToNew.set(oldIdx, newIdx++);
+		}
+
+		// 3. Обновляем массив sharedStrings
+		this.#sharedStrings = this.#sharedStrings.filter(s => !stringsToRemove.includes(s));
+
+		// 4. Обновляем индексы в ячейках на всех листах
+		for (const sheet of this.#sheets.values()) {
+			for (const row of sheet.rows.values()) {
+				for (const cell of row.cells.values()) {
+					if (cell.type === "s" && typeof cell.value === "number") {
+						const newIdx = oldToNew.get(cell.value);
+						if (newIdx !== undefined) {
+							cell.value = newIdx;
+						} else {
+							// Если cell.value была удалённой строкой, можно поставить 0 или null
+							cell.value = 0;
+						}
+					}
+				}
+			}
+		}
 	}
 
 	#removeSharedStringRef(strIdx: number, sheetName: string): boolean {
@@ -131,32 +172,187 @@ export class WorkbookBuilder {
 		refs.delete(sheetName);
 
 		if (refs.size === 0) {
-			// Удаляем строку
-			this.#sharedStringRefs.delete(str);
+			// Строим карту старых индексов → новых до удаления
+			const oldToNew = new Map<number, number>();
+			for (let i = 0; i < this.#sharedStrings.length; i++) {
+				if (i < strIdx) oldToNew.set(i, i);
+				else if (i > strIdx) oldToNew.set(i, i - 1);
+				// i === strIdx — эта строка будет удалена, индекса нет
+			}
+
+			// Удаляем строку из массива и рефов
 			this.#sharedStrings.splice(strIdx, 1);
-			this.#reindexSharedStrings(); // чтобы обновить индексы в ссылках и в ячейках всех листов!
+			this.#sharedStringRefs.delete(str);
+
+			// Обновляем индексы на всех листах
+			for (const sheet of this.#sheets.values()) {
+				for (const row of sheet.rows.values()) {
+					for (const cell of row.cells.values()) {
+						if (cell.type === "s" && typeof cell.value === "number") {
+							const newIdx = oldToNew.get(cell.value);
+							if (newIdx !== undefined) {
+								cell.value = newIdx;
+							} else {
+								// На всякий случай, если cell.value был удалённой строкой
+								cell.value = 0; // или null, по логике твоего приложения
+							}
+						}
+					}
+				}
+			}
 		}
 
 		return true;
 	}
 
-	#reindexSharedStrings() {
-		// Создаем новую Map для быстрого поиска индексов
-		const newSharedStrings = [...this.#sharedStrings];
-		const newRefs = new Map<string, Set<string>>();
+	#removeStyleRef2(style: Utils.CellStyle, sheetName: string): boolean {
+		const styleIndex = style.index;
 
-		for (const str of newSharedStrings) {
-			const oldSet = this.#sharedStringRefs.get(str);
+		if (!styleIndex) {
+			throw new Error("Invalid styleIndex");
+		}
 
-			if (oldSet) {
-				newRefs.set(str, oldSet);
-			} else {
-				newRefs.set(str, new Set());
+		let removedSomething = false;
+
+		const fillId = this.#cellXfs[styleIndex]?.fillId;
+		const fontId = this.#cellXfs[styleIndex]?.fontId;
+		const borderId = this.#cellXfs[styleIndex]?.borderId;
+		const numFmtId = this.#cellXfs[styleIndex]?.numFmtId;
+
+		// Удаляем ссылку на cellXfs по индексу
+		if (this.#removeFromUsageMap(this.#cellXfsUsageMap, sheetName, this.#cellXfs[styleIndex])) {
+			this.#cellXfs.splice(styleIndex, 1);
+
+			// Найдем и удалим из styleMap ключ для этого индекса
+			for (const [key, idx] of this.#styleMap.entries()) {
+				if (idx === styleIndex) {
+					this.#styleMap.delete(key);
+					break;
+				}
+			}
+
+			// Переиндексация ячеек во всех листах
+			for (const sheet of this.#sheets.values()) {
+				for (const row of sheet.rows.values()) {
+					for (const cell of row.cells.values()) {
+						if (cell.style?.index !== undefined && cell.style.index > styleIndex) {
+							cell.style.index -= 1;
+						}
+					}
+				}
+			}
+
+			removedSomething = true;
+		}
+
+		// игнорим 0 в том числе
+		if (fillId && this.#removeFromUsageMap(this.#fillsUsageMap, sheetName, style.fill)) {
+			this.#fills.splice(fillId, 1);
+			removedSomething = true;
+		}
+
+		// игнорим 0 в том числе
+		if (fontId && this.#removeFromUsageMap(this.#fontsUsageMap, sheetName, style.font)) {
+			this.#fonts.splice(fontId, 1);
+			removedSomething = true;
+		}
+
+		// игнорим 0 в том числе
+		if (borderId && this.#removeFromUsageMap(this.#bordersUsageMap, sheetName, style.border)) {
+			this.#borders.splice(borderId, 1);
+			removedSomething = true;
+		}
+
+		// не игнорим 0 в том числе
+		if (numFmtId !== undefined) {
+			const nf = this.#numFmts.find(nf => nf.id === numFmtId);
+			if (nf && this.#removeFromUsageMap(this.#numFmtsUsageMap, sheetName, nf.formatCode)) {
+				const idx = this.#numFmts.indexOf(nf);
+				if (idx !== -1) {
+					this.#numFmts.splice(idx, 1);
+					removedSomething = true;
+				}
 			}
 		}
 
-		this.#sharedStrings = newSharedStrings;
-		this.#sharedStringRefs = newRefs;
+		return removedSomething;
+	}
+
+	#reindexStyleMapAfterRemoval(removedIndex: number) {
+		const updates: Array<[string, number]> = [];
+		for (const [key, idx] of this.#styleMap.entries()) {
+			if (idx === removedIndex) {
+				this.#styleMap.delete(key);
+			} else if (idx > removedIndex) {
+				updates.push([key, idx - 1]);
+			}
+		}
+		for (const [key, newIdx] of updates) {
+			this.#styleMap.set(key, newIdx);
+		}
+	}
+
+	#removeStyleRef(style: Utils.CellStyle, sheetName: string): boolean {
+		const styleIndex = style.index;
+		if (styleIndex === undefined || styleIndex === null) {
+			throw new Error("Invalid styleIndex");
+		}
+
+		let removedSomething = false;
+
+		// Снимем части до splice — индексы ещё валидны
+		const xf = this.#cellXfs[styleIndex];
+		const fillId = xf?.fillId;
+		const fontId = xf?.fontId;
+		const borderId = xf?.borderId;
+		const numFmtId = xf?.numFmtId;
+
+		// Удаляем сам xf (ключ в usageMap — это xf, а не cell.style!)
+		if (xf && this.#removeFromUsageMap(this.#cellXfsUsageMap, sheetName, xf)) {
+			this.#cellXfs.splice(styleIndex, 1);
+
+			// почин: переиндексация styleMap после splice
+			this.#reindexStyleMapAfterRemoval(styleIndex);
+
+			// переиндексация ссылок в ячейках на всех листах
+			for (const sheet of this.#sheets.values()) {
+				for (const row of sheet.rows.values()) {
+					for (const cell of row.cells.values()) {
+						if (cell.style?.index !== undefined && cell.style.index > styleIndex) {
+							cell.style.index -= 1;
+						}
+					}
+				}
+			}
+
+			removedSomething = true;
+		}
+
+		// части стиля — удаляем только если больше нигде не используются
+		if (fillId && this.#removeFromUsageMap(this.#fillsUsageMap, sheetName, style.fill)) {
+			this.#fills.splice(fillId, 1);
+			removedSomething = true;
+		}
+		if (fontId && this.#removeFromUsageMap(this.#fontsUsageMap, sheetName, style.font)) {
+			this.#fonts.splice(fontId, 1);
+			removedSomething = true;
+		}
+		if (borderId && this.#removeFromUsageMap(this.#bordersUsageMap, sheetName, style.border)) {
+			this.#borders.splice(borderId, 1);
+			removedSomething = true;
+		}
+		if (numFmtId !== undefined) {
+			const nf = this.#numFmts.find(n => n.id === numFmtId);
+			if (nf && this.#removeFromUsageMap(this.#numFmtsUsageMap, sheetName, nf.formatCode)) {
+				const idx = this.#numFmts.indexOf(nf);
+				if (idx !== -1) {
+					this.#numFmts.splice(idx, 1);
+					removedSomething = true;
+				}
+			}
+		}
+
+		return removedSomething;
 	}
 
 	#addFile(key: string, value: Utils.ExcelFileContent): void {
@@ -251,14 +447,15 @@ export class WorkbookBuilder {
 		};
 	}
 
-	#fillToXml(fill?: Utils.CellStyle["fill"]) {
+	#fillToXml(fill?: Utils.CellStyle["fill"]): Utils.XmlNode {
 		if (!fill) return this.#fills[0] as Utils.XmlNode;
 
 		const patternType = fill.patternType ?? "solid";
-		const children = [];
+		const children: Utils.XmlNode["children"] = [];
 
-		const attrs: unknown = { patternType };
-		const fillChildren = [];
+		const attrs = { patternType };
+		const fillChildren: Utils.XmlNode["children"] = [];
+
 		if (fill.fgColor) {
 			const colorVal = fill.fgColor.startsWith("#") ? fill.fgColor.slice(1) : fill.fgColor;
 			fillChildren.push({
@@ -285,12 +482,13 @@ export class WorkbookBuilder {
 		};
 	}
 
-	#borderToXml(border?: Utils.CellStyle["border"]) {
-		const children = [];
+	#borderToXml(border?: Utils.CellStyle["border"]): Utils.XmlNode {
+		const children: Utils.XmlNode["children"] = [];
+
 		for (const side of ["left", "right", "top", "bottom"] as const) {
 			const b = border?.[side];
 			if (b) {
-				const attrs: unknown = { style: b.style };
+				const attrs = { style: b.style };
 				const sideChildren = b.color
 					? [{
 						attrs: { rgb: b.color.replace(/^#/, "") },
@@ -312,20 +510,22 @@ export class WorkbookBuilder {
 		};
 	}
 
-	#addOrGetStyle(style: Utils.CellStyle) {
+	#addOrGetStyle(style: Utils.CellStyle, name: string) {
 		// Конвертируем каждую часть
 		const fontId = this.#addUnique(this.#fonts, this.#fontToXml(style.font));
 		const fillId = this.#addUnique(this.#fills, this.#fillToXml(style.fill));
 		const borderId = this.#addUnique(this.#borders, this.#borderToXml(style.border));
 		const numFmtId = style.numberFormat ? this.#addNumFmt(style.numberFormat) : 0;
 
-		const xfKey = JSON.stringify({
-			alignment: style.alignment ?? null,  // включаем alignment в ключ
+		const xf = {
+			alignment: style.alignment,
 			borderId,
 			fillId,
 			fontId,
 			numFmtId,
-		});
+		};
+
+		const xfKey = JSON.stringify(xf);
 
 		if (this.#styleMap.has(xfKey)) {
 			return this.#styleMap.get(xfKey)!;
@@ -333,24 +533,101 @@ export class WorkbookBuilder {
 
 		const index = this.#cellXfs.length;
 
-		this.#cellXfs.push({
-			alignment: style.alignment,  // сохраняем alignment
-			borderId,
-			fillId,
-			fontId,
-			numFmtId,
-		});
+		this.#cellXfs.push(xf);
 
 		this.#styleMap.set(xfKey, index);
 
+		this.#updateUsageMap(this.#cellXfsUsageMap, name, xf);
+		this.#updateUsageMap(this.#fillsUsageMap, name, style.fill);
+		this.#updateUsageMap(this.#fontsUsageMap, name, style.font);
+		this.#updateUsageMap(this.#bordersUsageMap, name, style.border);
+		this.#updateUsageMap(this.#numFmtsUsageMap, name, style.numberFormat);
+
 		return index;
 	};
+
+	#updateUsageMap<T>(
+		map: Map<string, Map<string, number>>,
+		pageName: string,
+		key?: T,
+	) {
+		if (key === undefined || key === null) return;
+
+		const k = JSON.stringify(key);
+
+		if (!map.has(k)) {
+			map.set(k, new Map<string, number>());
+		}
+
+		const pageCounts = map.get(k)!;
+		pageCounts.set(pageName, (pageCounts.get(pageName) ?? 0) + 1);
+	}
+
+	#removeFromUsageMap<T>(
+		map: Map<string, Map<string, number>>,
+		pageName: string,
+		key?: T,
+	): boolean {
+		if (key === undefined || key === null) {
+			return false;
+		}
+
+		const k = JSON.stringify(key);
+		const pageCounts = map.get(k);
+		if (!pageCounts) {
+			return false;
+		}
+
+		const currentCount = pageCounts.get(pageName) ?? 0;
+		if (currentCount <= 1) {
+			pageCounts.delete(pageName);
+		} else {
+			pageCounts.set(pageName, currentCount - 1);
+		}
+
+		if (pageCounts.size === 0) {
+			map.delete(k);
+			return true; // стиль больше нигде не используется
+		}
+
+		return false; // ещё есть страницы, где используется
+	}
+
+	#removeStylesRefForSheet(sheetName: string): boolean {
+		const sheet = this.#sheets.get(sheetName);
+		if (!sheet) return false;
+
+		const stylesToRemove: Utils.CellStyle[] = [];
+
+		let removedSomething = false;
+
+		for (const row of sheet.rows.values()) {
+			for (const cell of row.cells.values()) {
+				if (cell.style?.index !== undefined) {
+
+					stylesToRemove.push(cell.style);
+				}
+			}
+		}
+
+		for (const style of stylesToRemove) {
+			const removed = this.#removeStyleRef(style, sheetName);
+
+			if (removed) {
+				removedSomething = true;
+			}
+		}
+
+		return removedSomething;
+	}
 
 	addSheet(name: string): Utils.SheetData {
 		const sheet = Utils.createSheet(name, {
 			addOrGetStyle: this.#addOrGetStyle.bind(this),
 			addSharedString: this.#addSharedString.bind(this),
+			cleanupUnused: this.#cleanupUnused,
 			removeSharedStringRef: this.#removeSharedStringRef.bind(this),
+			removeStyleRef: this.#removeStyleRef.bind(this),
 		});
 
 		this.#sheets.set(name, sheet);
@@ -379,10 +656,14 @@ export class WorkbookBuilder {
 			return false;
 		}
 
+		if (this.#cleanupUnused) {
+			this.#removeSheetSharedStrings(name);
+			this.#removeStylesRefForSheet(name);
+		}
+
 		// Удаляем из коллекции
 		this.#sheets.delete(name);
 
-		this.#removeSheetSharedStrings(name);
 		this.#updateWorkbookXml();
 		this.#updateWorkbookRels();
 		this.#updateContentTypes();

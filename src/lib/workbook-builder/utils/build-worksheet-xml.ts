@@ -12,7 +12,7 @@ export function buildWorksheetXml(rows: SheetData["rows"]): string {
 			},
 			children: [
 				{
-					attrs: { ref: "A1" },
+					attrs: { ref: "A1:A1" },
 					tag: "dimension",
 				},
 				{

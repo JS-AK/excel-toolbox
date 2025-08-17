@@ -73,7 +73,7 @@ describe("initializeFiles", () => {
 </workbook>`,
 			"xl/worksheets/sheet1.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <dimension ref="A1"/>
+  <dimension ref="A1:A1"/>
   <sheetViews>
     <sheetView workbookViewId="0"/>
   </sheetViews>
