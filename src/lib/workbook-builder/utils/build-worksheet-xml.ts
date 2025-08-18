@@ -1,8 +1,8 @@
-import { CellData, SheetData } from "./sheet.js";
+import { CellData, RowData, SheetData } from "./sheet.js";
 import { XML_DECLARATION, XML_NAMESPACES } from "./constants.js";
 import { buildXml } from "./build-xml.js";
 
-export function buildWorksheetXml(rows: SheetData["rows"]): string {
+export function buildWorksheetXml(rows: SheetData["rows"] = new Map<number, RowData>()): string {
 	return [
 		XML_DECLARATION,
 		buildXml({

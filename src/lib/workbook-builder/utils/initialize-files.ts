@@ -1,4 +1,3 @@
-import { RowData } from "./sheet.js";
 import { buildContentTypesXml } from "./build-content-types-xml.js";
 import { buildSharedStringsXml } from "./build-shared-strings-xml.js";
 import { buildStylesXml } from "./build-styles-xml.js";
@@ -27,7 +26,7 @@ export type ExcelFiles = {
 	[key: string]: ExcelFileContent;
 }
 
-export const initializeFiles = (): ExcelFiles => {
+export const initializeFiles = (sheetName: string): ExcelFiles => {
 	const declaration = XML_DECLARATION;
 	const sheetsCount = 1;
 
@@ -44,9 +43,9 @@ export const initializeFiles = (): ExcelFiles => {
 
 	const workbookRelsXml = buildWorkbookRels(sheetsCount);
 	const stylesXml = buildStylesXml();
-	const sharedStringsXml = buildSharedStringsXml([]);
-	const workbookXml = buildWorkbookXml([{ name: "Sheet1" }]);
-	const worksheet = buildWorksheetXml(new Map<number, RowData>());
+	const sharedStringsXml = buildSharedStringsXml();
+	const workbookXml = buildWorkbookXml([{ name: sheetName }]);
+	const worksheet = buildWorksheetXml();
 
 	return {
 		[FILE_PATHS.CONTENT_TYPES]: contentTypesXml,

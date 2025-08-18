@@ -6,7 +6,7 @@ import { buildXml } from "./build-xml.js";
  *
  * @param strings - Массив уникальных строк, используемых в книге
  */
-export function buildSharedStringsXml(strings: string[]): string {
+export function buildSharedStringsXml(strings: string[] = []): string {
 	const escapeXml = (str: string) =>
 		str
 			.replace(/&/g, "&amp;")
