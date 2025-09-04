@@ -22,16 +22,25 @@ export function buildWorkbookRels(sheetsCount: number): string {
 		tag: "Relationship",
 	};
 
-	const sharedStringsRel = {
+	const themeRel = {
 		attrs: {
 			Id: `rId${sheetsCount + 2}`,
+			Target: "theme/theme1.xml",
+			Type: RELATIONSHIP_TYPES.THEME,
+		},
+		tag: "Relationship",
+	};
+
+	const sharedStringsRel = {
+		attrs: {
+			Id: `rId${sheetsCount + 3}`,
 			Target: "sharedStrings.xml",
 			Type: RELATIONSHIP_TYPES.SHARED_STRINGS,
 		},
 		tag: "Relationship",
 	};
 
-	const allRels = [...sheetRels, stylesRel, sharedStringsRel];
+	const allRels = [...sheetRels, stylesRel, themeRel, sharedStringsRel];
 
 	return [
 		XML_DECLARATION,

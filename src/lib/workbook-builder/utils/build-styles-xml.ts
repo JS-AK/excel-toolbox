@@ -1,3 +1,5 @@
+import * as Default from "../default/index.js";
+
 import { XML_DECLARATION, XML_NAMESPACES } from "./constants.js";
 import { XmlNode, buildXml } from "./build-xml.js";
 
@@ -58,16 +60,7 @@ export function buildStylesXml(data?: {
 	} else {
 		children.push({
 			attrs: { count: "1" },
-			children: [
-				{
-					children: [
-						{ attrs: { val: "11" }, tag: "sz" },
-						{ attrs: { theme: "1" }, tag: "color" },
-						{ attrs: { val: "Calibri" }, tag: "name" },
-					],
-					tag: "font",
-				},
-			],
+			children: [Default.font()],
 			tag: "fonts",
 		});
 	}
@@ -81,14 +74,7 @@ export function buildStylesXml(data?: {
 	} else {
 		children.push({
 			attrs: { count: "1" },
-			children: [
-				{
-					children: [
-						{ attrs: { patternType: "none" }, tag: "patternFill" },
-					],
-					tag: "fill",
-				},
-			],
+			children: [Default.fill()],
 			tag: "fills",
 		});
 	}
@@ -102,17 +88,7 @@ export function buildStylesXml(data?: {
 	} else {
 		children.push({
 			attrs: { count: "1" },
-			children: [
-				{
-					children: [
-						{ tag: "left" },
-						{ tag: "right" },
-						{ tag: "top" },
-						{ tag: "bottom" },
-					],
-					tag: "border",
-				},
-			],
+			children: [Default.border()],
 			tag: "borders",
 		});
 	}

@@ -11,8 +11,11 @@ export function buildContentTypesXml(sheetsCount: number): string {
 	}));
 
 	const overrides: XmlNode[] = [
+		{ ContentType: CONTENT_TYPES.THEME, PartName: "/xl/theme/theme1.xml" },
 		{ ContentType: CONTENT_TYPES.WORKBOOK, PartName: "/xl/workbook.xml" },
 		{ ContentType: CONTENT_TYPES.STYLES, PartName: "/xl/styles.xml" },
+		{ ContentType: CONTENT_TYPES.CORE, PartName: "/docProps/core.xml" },
+		{ ContentType: CONTENT_TYPES.APP, PartName: "/docProps/app.xml" },
 		{ ContentType: CONTENT_TYPES.SHARED_STRINGS, PartName: "/xl/sharedStrings.xml" },
 	].map(({ ContentType, PartName }) => ({
 		attrs: { ContentType, PartName },

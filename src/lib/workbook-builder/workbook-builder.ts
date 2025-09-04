@@ -5,20 +5,29 @@ import * as Zip from "../zip/index.js";
 import { updateDimension } from "../template/utils/update-dimension.js";
 
 import * as Default from "./default/index.js";
+import * as MergeCells from "./merge-cells/index.js";
 import * as SharedStringRef from "./shared-string-ref/index.js";
 import * as StyleRef from "./style-ref/index.js";
 import { FILE_PATHS } from "./utils/constants.js";
+import { columnIndexToLetter } from "../template/utils/column-index-to-letter.js";
 
 export type CellValue = string | number | Date;
 
 export class WorkbookBuilder {
+	// Нужна ли глубокая очистка
 	#cleanupUnused: boolean;
 
+	// Все что касается листов
 	#files: Utils.ExcelFiles;
+
+	// Все что касается листов
 	#sheets: Map<string, Utils.SheetData> = new Map();
+
+	// Все что касается shared strings
 	#sharedStrings: string[] = [];
 	#sharedStringRefs: Map<string, Set<string>> = new Map(); // key = строка, value = множество листов
 
+	// Все что касается styles
 	#borders: NonNullable<Utils.XmlNode["children"]>;
 	#cellXfs: Utils.CellXfs;
 	#fills: NonNullable<Utils.XmlNode["children"]>;
@@ -26,22 +35,27 @@ export class WorkbookBuilder {
 	#numFmts: { formatCode: string; id: number }[];
 	#styleMap = new Map<string, number>(); // JSON -> styleIndex
 
+	// Все что касается merge cells
+	#mergeCells: Map<string, MergeCells.MergeCell[]> = new Map();
+
 	constructor({ cleanupUnused = false } = {}) {
 		this.#cleanupUnused = cleanupUnused;
 
 		this.#files = Utils.initializeFiles(Default.sheetName());
 
 		// Initial styles initialization
-		this.#borders = Default.borders();
-		this.#fills = Default.fills();
-		this.#fonts = Default.fonts();
-		this.#numFmts = Default.numFmts();
-		this.#cellXfs = Default.cellXfs();
+		this.#borders = [Default.border()];
+		this.#fills = [Default.fill()];
+		this.#fonts = [Default.font()];
+		this.#numFmts = [];
+		this.#cellXfs = [Default.cellXf()];
 
 		const sheet = Utils.createSheet(Default.sheetName(), {
+			addMerge: this.#addMerge.bind(this),
 			addOrGetStyle: this.#addOrGetStyle.bind(this),
 			addSharedString: this.#addSharedString.bind(this),
 			cleanupUnused: this.#cleanupUnused,
+			removeMerge: this.#removeMerge.bind(this),
 			removeSharedStringRef: this.#removeSharedStringRef.bind(this),
 			removeStyleRef: this.#removeStyleRef.bind(this),
 		});
@@ -89,6 +103,10 @@ export class WorkbookBuilder {
 		return this.#styleMap;
 	}
 
+	get mergeCells() {
+		return this.#mergeCells;
+	}
+
 	/** Shared strings */
 
 	#addSharedString(str: string, sheetName: string): number {
@@ -121,8 +139,31 @@ export class WorkbookBuilder {
 
 	/** ---------- */
 
+	/** Merge cells */
+
+	#addMerge(payload: MergeCells.MergeCell & { sheetName: string }) {
+		return MergeCells.add.bind(this)(payload);
+	}
+
+	#removeMerge(payload: MergeCells.MergeCell & { sheetName: string }) {
+		return MergeCells.remove.bind(this)(payload);
+	}
+
+	#removeSheetMerges(sheetName: string) {
+		this.mergeCells.delete(sheetName);
+	}
+
+	/** ----------- */
+
 	#addFile(key: string, value: Utils.ExcelFileContent): void {
 		this.#files[key] = value;
+	}
+
+	#updateAppXml() {
+		this.#addFile(
+			FILE_PATHS.APP,
+			Utils.buildAppXml({ sheetNames: Array.from(this.#sheets.keys()) }),
+		);
 	}
 
 	#updateWorkbookXml() {
@@ -154,14 +195,19 @@ export class WorkbookBuilder {
 		}
 
 		const sheet = Utils.createSheet(sheetName, {
+			addMerge: this.#addMerge.bind(this),
 			addOrGetStyle: this.#addOrGetStyle.bind(this),
 			addSharedString: this.#addSharedString.bind(this),
 			cleanupUnused: this.#cleanupUnused,
+			removeMerge: this.#removeMerge.bind(this),
 			removeSharedStringRef: this.#removeSharedStringRef.bind(this),
 			removeStyleRef: this.#removeStyleRef.bind(this),
 		});
 
 		this.#sheets.set(sheetName, sheet);
+
+		// Добавляем запись в app.xml
+		this.#updateAppXml();
 
 		// Добавляем запись в workbook.xml
 		this.#updateWorkbookXml();
@@ -188,13 +234,20 @@ export class WorkbookBuilder {
 		}
 
 		if (this.#cleanupUnused) {
+			// Удаляем его shared strings
 			this.#removeSheetSharedStrings(sheetName);
+
+			// Удаляем его style refs
 			this.#removeSheetStyleRefs(sheetName);
 		}
+
+		// Удаляем его merges
+		this.#removeSheetMerges(sheetName);
 
 		// Удаляем из коллекции
 		this.#sheets.delete(sheetName);
 
+		this.#updateAppXml();
 		this.#updateWorkbookXml();
 		this.#updateWorkbookRels();
 		this.#updateContentTypes();
@@ -221,9 +274,16 @@ export class WorkbookBuilder {
 	}
 
 	async saveToFile(path: string) {
-		// 1. Пройтись по всем sheets
 		Array.from(this.#sheets.values()).forEach((sheet, index) => {
-			const xml = Utils.buildWorksheetXml(sheet.rows);
+			const merges = this.#mergeCells.get(sheet.name) || [];
+			const preparedMerges: string[] = [];
+
+			for (const merge of merges) {
+				preparedMerges.push(`${columnIndexToLetter(merge.startCol)}${merge.startRow}:${columnIndexToLetter(merge.endCol)}${merge.endRow}`);
+			}
+
+			const xml = Utils.buildWorksheetXml(sheet.rows, preparedMerges);
+
 			const filePath = `xl/worksheets/sheet${index + 1}.xml`;
 
 			this.#addFile(filePath, updateDimension(xml));

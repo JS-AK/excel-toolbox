@@ -5,3 +5,4 @@ export * from "./remove-sheet-from-content-types.js";
 export * from "./remove-sheet-from-rels.js";
 export * from "./remove-sheet-from-workbook.js";
 export * from "./shift-cell-ref.js";
+export * from "./trim-and-join-multiline.js";

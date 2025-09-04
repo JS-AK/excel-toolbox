@@ -1,4 +1,5 @@
 import { columnIndexToLetter, columnLetterToIndex } from "../../template/utils/index.js";
+import { MergeCell } from "../merge-cells/types.js";
 
 const MAX_COLUMNS = 16384;
 const MAX_ROWS = 1_048_576;
@@ -71,15 +72,19 @@ export interface SheetData {
 	rows: Map<number, RowData>;
 
 	// Методы для удобной работы
+	addMerge(mergeCell: MergeCell): MergeCell;
+	removeMerge(mergeCell: MergeCell): boolean;
 	setCell(rowIndex: number, column: string | number, cell: CellData): void;
 	getCell(rowIndex: number, column: string | number): CellData | undefined;
-	deleteCell(rowIndex: number, column: string | number): boolean;
+	removeCell(rowIndex: number, column: string | number): boolean;
 }
 
 // Фабрика для создания пустого листа
 export function createSheet(
 	name: string,
 	fn: {
+		addMerge: (mergeCell: MergeCell & { sheetName: string }) => MergeCell;
+		removeMerge: (mergeCell: MergeCell & { sheetName: string }) => boolean;
 		addOrGetStyle: (style: CellStyle, sheetName: string) => number;
 		addSharedString: (str: string, sheetName: string) => number;
 		cleanupUnused: boolean; // новая опция
@@ -88,9 +93,11 @@ export function createSheet(
 	},
 ): SheetData {
 	const {
+		addMerge,
 		addOrGetStyle,
 		addSharedString,
 		cleanupUnused,
+		removeMerge,
 		removeSharedStringRef,
 		removeStyleRef,
 	} = fn;
@@ -99,6 +106,14 @@ export function createSheet(
 	return {
 		name,
 		rows,
+
+		addMerge(mergeCell: MergeCell): MergeCell {
+			return addMerge({ ...mergeCell, sheetName: name });
+		},
+
+		removeMerge(mergeCell: MergeCell) {
+			return removeMerge({ ...mergeCell, sheetName: name });
+		},
 
 		setCell(rowIndex, column, cell) {
 			if (rowIndex <= 0) {
@@ -175,20 +190,43 @@ export function createSheet(
 			}
 		},
 
-		deleteCell(rowIndex, column) {
-			if (typeof column === "number") {
-				if (column < 0 || column > MAX_COLUMNS) {
-					throw new Error("Invalid column number");
-				}
-
-				return rows.get(rowIndex)?.cells.delete(columnIndexToLetter(column)) ?? false;
-			} else {
-				if (!isValidColumn(column)) {
-					throw new Error(`Invalid column string: "${column}"`);
-				}
-
-				return rows.get(rowIndex)?.cells.delete(column) ?? false;
+		removeCell(rowIndex, column) {
+			if (rowIndex <= 0) {
+				throw new Error("Invalid rowIndex");
 			}
+
+			if (!Number.isInteger(rowIndex) || rowIndex <= 0) {
+				throw new Error("Invalid rowIndex: must be a positive integer");
+			}
+
+			if (rowIndex > MAX_ROWS) {
+				throw new Error(`Invalid rowIndex: exceeds Excel max rows (${MAX_ROWS})`);
+			}
+
+			const letterColumn = typeof column === "number"
+				? columnIndexToLetter(column)
+				: column;
+
+			if (!isValidColumn(letterColumn)) {
+				throw new Error(`Invalid column string: "${letterColumn}"`);
+			}
+
+			if (cleanupUnused) {
+				const oldCell = rows.get(rowIndex)?.cells.get(letterColumn);
+
+				// Обработка ситуации если до этого была в ячейке shared string
+				if (oldCell) {
+					if (oldCell?.type === "s" && typeof oldCell.value === "number") {
+						removeSharedStringRef(oldCell.value, name);
+					}
+
+					if (oldCell?.style && typeof oldCell.style.index === "number") {
+						removeStyleRef(oldCell.style, name);
+					}
+				}
+			}
+
+			return rows.get(rowIndex)?.cells.delete(letterColumn) ?? false;
 		},
 	};
 }
