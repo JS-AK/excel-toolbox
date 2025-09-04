@@ -1,5 +1,13 @@
-import { WorkbookBuilder } from "../workbook-builder.js";
+import type { WorkbookBuilder } from "../workbook-builder.js";
 
+/**
+ * Adds a shared string to the workbook and returns its index.
+ *
+ * @param this - WorkbookBuilder instance
+ * @param payload - Object containing sheet name and string value
+ *
+ * @returns The index of the shared string in the shared strings array
+ */
 export function add(
 	this: WorkbookBuilder,
 	payload: {
@@ -16,7 +24,7 @@ export function add(
 		this.sharedStrings.push(str);
 		this.sharedStringRefs.set(str, new Set([sheetName]));
 	} else {
-		// Добавляем имя листа в Set, если ещё нет
+		// Add sheet name to Set if not already present
 		this.sharedStringRefs.get(str)?.add(sheetName);
 	}
 

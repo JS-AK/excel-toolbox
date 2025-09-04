@@ -1,6 +1,7 @@
-import { CellData, RowData, SheetData } from "./sheet.js";
+import { RowData, SheetData } from "./sheet.js";
 import { XML_DECLARATION, XML_NAMESPACES } from "./constants.js";
 import { XmlNode, buildXml } from "./build-xml.js";
+import { buildCellChildren } from "./build-cell-children.js";
 
 export function buildWorksheetXml(
 	rows: SheetData["rows"] = new Map<number, RowData>(),
@@ -59,43 +60,4 @@ export function buildWorksheetXml(
 			tag: "worksheet",
 		}),
 	].join("\n");
-}
-
-function buildCellChildren(cell: CellData) {
-	if (cell.value === undefined) return [];
-
-	switch (cell.type) {
-		case "b": {
-			return [{
-				children: [cell.value ? "1" : "0"],
-				tag: "v",
-			}];
-		}
-
-		case "inlineStr": {
-			// для inlineStr вложение <is><t>значение</t></is>
-			return [
-				{
-					children: [
-						{
-							children: [String(cell.value)],
-							tag: "t",
-						},
-					],
-					tag: "is",
-				},
-			];
-		}
-
-		case "s":
-		case "n":
-		case "str":
-		case "e":
-		default: {
-			return [{
-				children: [String(cell.value)],
-				tag: "v",
-			}];
-		}
-	}
 }

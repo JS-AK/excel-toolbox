@@ -1,4 +1,5 @@
 export * from "./build-app-xml.js";
+export * from "./build-cell-children.js";
 export * from "./build-content-types-xml.js";
 export * from "./build-shared-strings-xml.js";
 export * from "./build-styles-xml.js";

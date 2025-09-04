@@ -1,8 +1,18 @@
-import { WorkbookBuilder } from "../workbook-builder.js";
+import type { WorkbookBuilder } from "../workbook-builder.js";
 
 import * as Helpers from "./helpers/index.js";
-import { MergeCell } from "./types.js";
+import type { MergeCell } from "./types.js";
 
+/**
+ * Removes a merge cell range from the specified sheet.
+ *
+ * @param this - WorkbookBuilder instance
+ * @param payload - Merge cell data with sheet name
+ *
+ * @returns True if the merge cell was successfully removed
+ *
+ * @throws Error if sheet is not found or merge cell does not exist
+ */
 export function remove(
 	this: WorkbookBuilder,
 	payload: MergeCell & { sheetName: string },
@@ -17,7 +27,9 @@ export function remove(
 
 	const i = merges.findIndex(m => Helpers.rangesEqual(m, { endCol, endRow, startCol, startRow }));
 
-	if (i === -1) throw new Error("Invalid merge cell");
+	if (i === -1) {
+		throw new Error("Invalid merge cell");
+	}
 
 	merges.splice(i, 1);
 

@@ -27,7 +27,14 @@ describe("addOrGet()", () => {
 
 		expect(wb.cellXfs.at(-1)).toEqual({ alignment: { horizontal: "center" }, borderId: 1, fillId: 1, fontId: 1, numFmtId: 164 });
 		expect(wb.fills.at(-1)).toEqual({ children: [{ attrs: { patternType: "solid" }, children: [], tag: "patternFill" }], tag: "fill" });
-		expect(wb.fonts.at(-1)).toEqual({ children: [{ attrs: { val: "Arial" }, tag: "name" }], tag: "font" });
+		expect(wb.fonts.at(-1)).toEqual({
+			children: [
+				{ attrs: { val: "11" }, tag: "sz" },
+				{ attrs: { theme: "1" }, tag: "color" },
+				{ attrs: { val: "Arial" }, tag: "name" },
+			],
+			tag: "font",
+		});
 		expect(wb.borders.at(-1)).toEqual({ children: [{ tag: "left" }, { tag: "right" }, { tag: "top" }, { attrs: { style: "medium" }, children: [{ attrs: { rgb: "FFFF0000" }, tag: "color" }], tag: "bottom" }], tag: "border" });
 		expect(wb.numFmts.at(-1)).toEqual({ formatCode: "dd/mm/yyyy", id: 164 });
 
