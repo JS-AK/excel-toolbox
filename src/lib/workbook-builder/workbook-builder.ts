@@ -62,51 +62,51 @@ export class WorkbookBuilder {
 		this.#sheets.set(Default.sheetName(), sheet);
 	}
 
-	get sheets() {
+	protected get sheets() {
 		return this.#sheets;
 	}
 
-	get sharedStrings() {
+	protected get sharedStrings() {
 		return this.#sharedStrings;
 	}
 
-	set sharedStrings(sharedStrings: string[]) {
+	protected set sharedStrings(sharedStrings: string[]) {
 		this.#sharedStrings = sharedStrings;
 	}
 
-	get sharedStringMap() {
+	protected get sharedStringMap() {
 		return this.#sharedStringMap;
 	}
 
-	get sharedStringRefs() {
+	protected get sharedStringRefs() {
 		return this.#sharedStringRefs;
 	}
 
-	get borders() {
+	protected get borders() {
 		return this.#borders;
 	}
 
-	get cellXfs() {
+	protected get cellXfs() {
 		return this.#cellXfs;
 	}
 
-	get fills() {
+	protected get fills() {
 		return this.#fills;
 	}
 
-	get fonts() {
+	protected get fonts() {
 		return this.#fonts;
 	}
 
-	get numFmts() {
+	protected get numFmts() {
 		return this.#numFmts;
 	}
 
-	get styleMap() {
+	protected get styleMap() {
 		return this.#styleMap;
 	}
 
-	get mergeCells() {
+	protected get mergeCells() {
 		return this.#mergeCells;
 	}
 
