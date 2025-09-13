@@ -5,12 +5,21 @@ import type { XmlNode } from "./build-xml.js";
  * Builds XML children nodes for a cell based on its type and value.
  *
  * @param cell - The cell data containing value and type information
- * 
+ *
  * @returns Array of XML nodes representing the cell's content structure
  */
 export function buildCellChildren(cell: CellData): XmlNode[] {
 	if (cell.value === undefined) {
 		return [];
+	}
+
+	if (cell.isFormula) {
+		return [
+			{
+				children: [String(cell.value)],
+				tag: "f",
+			},
+		];
 	}
 
 	switch (cell.type) {

@@ -35,7 +35,14 @@ describe("addOrGet()", () => {
 			],
 			tag: "font",
 		});
-		expect(wb.borders.at(-1)).toEqual({ children: [{ tag: "left" }, { tag: "right" }, { tag: "top" }, { attrs: { style: "medium" }, children: [{ attrs: { rgb: "FFFF0000" }, tag: "color" }], tag: "bottom" }], tag: "border" });
+		expect(wb.borders.at(-1)).toEqual({
+			children: [
+				{ tag: "left" },
+				{ tag: "right" },
+				{ tag: "top" },
+				{ attrs: { style: "medium" }, children: [{ attrs: { rgb: "FFFF0000" }, tag: "color" }], tag: "bottom" },
+			], tag: "border",
+		});
 		expect(wb.numFmts.at(-1)).toEqual({ formatCode: "dd/mm/yyyy", id: 164 });
 
 		expect(wb.styleMap.get(JSON.stringify({ alignment: { horizontal: "center" }, borderId: 1, fillId: 1, fontId: 1, numFmtId: 164 }))).toBe(1);

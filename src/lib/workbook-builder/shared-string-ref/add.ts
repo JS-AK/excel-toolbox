@@ -17,11 +17,16 @@ export function add(
 ): number {
 	const { sheetName, str } = payload;
 
-	let idx = this.sharedStrings.indexOf(str);
+	if (!this.getSheet(sheetName)) {
+		throw new Error("SheetName was not found");
+	}
 
-	if (idx === -1) {
+	let idx = this.sharedStringMap.get(str);
+
+	if (idx === undefined) {
 		idx = this.sharedStrings.length;
 		this.sharedStrings.push(str);
+		this.sharedStringMap.set(str, idx);
 		this.sharedStringRefs.set(str, new Set([sheetName]));
 	} else {
 		// Add sheet name to Set if not already present

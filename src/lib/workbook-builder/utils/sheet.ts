@@ -1,13 +1,18 @@
 import { columnIndexToLetter, columnLetterToIndex } from "../../template/utils/index.js";
+
 import { MergeCell } from "../merge-cells/types.js";
+import { dateToExcelSerial } from "./date-to-excel-serial.js";
 
 const MAX_COLUMNS = 16384;
 const MAX_ROWS = 1_048_576;
 
 // Тип ячейки (Cell)
 export interface CellData {
-	value: string | number | boolean | null;
-	type?: CellType; // s = shared string, n = number, b = boolean
+	value: CellValue;
+
+	isFormula?: boolean;
+
+	type?: CellType;
 
 	style?: CellStyle;
 }
@@ -46,15 +51,15 @@ export type CellStyle = {
 export type CellType = "s" | "inlineStr" | "n" | "b" | "str" | "e";
 
 /*
-	s	Shared string (ссылка на sharedStrings.xml)	<v> содержит индекс строки в sharedStrings
-	inlineStr	Inline string	Вложенный элемент <is><t>текст</t></is>
-	str	Formula string result (формула)	Не для обычных текстов, а для результата формулы
-	b	Boolean	<v> — 0 или 1
-	e	Ошибка	<v> — код ошибки
-	n	Number (число)	Нет атрибута t или t="n"
+	s              - Shared string (ссылка на sharedStrings.xml)	<v> содержит индекс строки в sharedStrings
+	inlineStr      - Inline string	Вложенный элемент <is><t>текст</t></is>
+	str            - Formula string result (формула)	Не для обычных текстов, а для результата формулы
+	b              - Boolean	<v> — 0 или 1
+	e              - Ошибка	<v> — код ошибки
+	n              - Number (число)	Нет атрибута t или t="n"
 */
 
-type CellValue = string | number | boolean | null | undefined;
+type CellValue = string | number | boolean | Date | null | undefined;
 
 type BorderStyle = {
 	style: "thin" | "medium" | "thick" | "dashed" | "dotted" | "double" | "hair" | "mediumDashed" | "dashDot" | "mediumDashDot" | "dashDotDot" | "mediumDashDotDot" | "slantDashDot";
@@ -140,6 +145,11 @@ export function createSheet(
 				throw new Error(`Invalid column string: "${letterColumn}"`);
 			}
 
+			// if is Date
+			if (cell.value instanceof Date) {
+				cell.value = dateToExcelSerial(cell.value);
+			}
+
 			if (cleanupUnused) {
 				const oldCell = rows.get(rowIndex)?.cells.get(letterColumn);
 
@@ -155,8 +165,16 @@ export function createSheet(
 				}
 			}
 
-			// Если не указан type — определить сам
-			cell.type = detectCellType(cell.value, cell.type);
+			if (cell.isFormula) {
+				cell.type = undefined;
+			} else {
+				if (cell.type === "str") {
+					throw new Error(`Cell type: "${cell.type}" valid only for formula cells`);
+				}
+
+				// Если не указан type — определить сам
+				cell.type = detectCellType(cell.value, cell.type);
+			}
 
 			// Обработка shared string
 			if (cell.type === "s") {
@@ -258,8 +276,6 @@ function detectCellType(value: CellValue, explicitType?: CellType): CellType {
 	}
 
 	if (typeof value === "string") {
-		// Проверка: если строка начинается с "=" — это формула, можно вернуть "str"
-		// Но формулы лучше обрабатывать отдельно
 		// По умолчанию — считаем inlineStr
 		return "inlineStr";
 	}

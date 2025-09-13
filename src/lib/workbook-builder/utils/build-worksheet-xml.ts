@@ -7,6 +7,8 @@ export function buildWorksheetXml(
 	rows: SheetData["rows"] = new Map<number, RowData>(),
 	merges: string[] = [],
 ): string {
+	const typeSetSkipping = new Set<string>(["n"]);
+
 	const children: XmlNode["children"] = [
 		{
 			attrs: { ref: "A1:A1" },
@@ -26,8 +28,16 @@ export function buildWorksheetXml(
 				children: Array.from(row.cells.entries()).map(([colNumber, cell]) => {
 					const cellRef = `${colNumber}${rowNumber}`;
 
+					const attrT = (cell.type && typeSetSkipping.has(cell.type))
+						? undefined
+						: cell.type;
+
 					return {
-						attrs: { r: cellRef, s: cell.style?.index, t: cell.type },
+						attrs: {
+							r: cellRef,
+							s: cell.style?.index,
+							t: attrT,
+						},
 						children: buildCellChildren(cell),
 						tag: "c",
 					};

@@ -11,8 +11,6 @@ import * as StyleRef from "./style-ref/index.js";
 import { FILE_PATHS } from "./utils/constants.js";
 import { columnIndexToLetter } from "../template/utils/column-index-to-letter.js";
 
-export type CellValue = string | number | Date;
-
 export class WorkbookBuilder {
 	// Нужна ли глубокая очистка
 	#cleanupUnused: boolean;
@@ -25,6 +23,7 @@ export class WorkbookBuilder {
 
 	// Все что касается shared strings
 	#sharedStrings: string[] = [];
+	#sharedStringMap: Map<string, number> = new Map(); // key = строка, value = индекс в массиве
 	#sharedStringRefs: Map<string, Set<string>> = new Map(); // key = строка, value = множество листов
 
 	// Все что касается styles
@@ -38,7 +37,7 @@ export class WorkbookBuilder {
 	// Все что касается merge cells
 	#mergeCells: Map<string, MergeCells.MergeCell[]> = new Map();
 
-	constructor({ cleanupUnused = false } = {}) {
+	constructor({ cleanupUnused = false, defaultSheetName = Default.sheetName() } = {}) {
 		this.#cleanupUnused = cleanupUnused;
 
 		this.#files = Utils.initializeFiles(Default.sheetName());
@@ -50,7 +49,7 @@ export class WorkbookBuilder {
 		this.#numFmts = [];
 		this.#cellXfs = [Default.cellXf()];
 
-		const sheet = Utils.createSheet(Default.sheetName(), {
+		const sheet = Utils.createSheet(defaultSheetName, {
 			addMerge: this.#addMerge.bind(this),
 			addOrGetStyle: this.#addOrGetStyle.bind(this),
 			addSharedString: this.#addSharedString.bind(this),
@@ -73,6 +72,10 @@ export class WorkbookBuilder {
 
 	set sharedStrings(sharedStrings: string[]) {
 		this.#sharedStrings = sharedStrings;
+	}
+
+	get sharedStringMap() {
+		return this.#sharedStringMap;
 	}
 
 	get sharedStringRefs() {
@@ -259,6 +262,7 @@ export class WorkbookBuilder {
 		return {
 			sheetsNames: Array.from(this.#sheets.values()).map((sheet) => sheet.name),
 
+			sharedStringMap: this.#sharedStringMap,
 			sharedStringRefs: this.#sharedStringRefs,
 			sharedStrings: this.#sharedStrings,
 
@@ -274,20 +278,19 @@ export class WorkbookBuilder {
 	}
 
 	async saveToFile(path: string) {
-		Array.from(this.#sheets.values()).forEach((sheet, index) => {
-			const merges = this.#mergeCells.get(sheet.name) || [];
-			const preparedMerges: string[] = [];
+		let index = 0;
 
-			for (const merge of merges) {
-				preparedMerges.push(`${columnIndexToLetter(merge.startCol)}${merge.startRow}:${columnIndexToLetter(merge.endCol)}${merge.endRow}`);
-			}
+		for (const sheet of this.#sheets.values()) {
+			const merges = this.#mergeCells.get(sheet.name) || [];
+			const preparedMerges = merges.map(
+				merge => `${columnIndexToLetter(merge.startCol)}${merge.startRow}:${columnIndexToLetter(merge.endCol)}${merge.endRow}`,
+			);
 
 			const xml = Utils.buildWorksheetXml(sheet.rows, preparedMerges);
-
-			const filePath = `xl/worksheets/sheet${index + 1}.xml`;
+			const filePath = `xl/worksheets/sheet${++index}.xml`;
 
 			this.#addFile(filePath, updateDimension(xml));
-		});
+		}
 
 		if (this.#sharedStrings.length) {
 			const xml = Utils.buildSharedStringsXml(this.#sharedStrings);

@@ -9,5 +9,6 @@ export * from "./build-workbook-xml.js";
 export * from "./build-worksheet-xml.js";
 export * from "./build-xml.js";
 export * from "./constants.js";
+export * from "./date-to-excel-serial.js";
 export * from "./initialize-files.js";
 export * from "./sheet.js";

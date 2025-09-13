@@ -24,7 +24,7 @@ describe("buildWorksheetXml", () => {
 
 		const result = trimAndJoinMultiline({ inputString: buildWorksheetXml(rows), separator: "" });
 		expect(result).toContain("<row r=\"1\"><c r=\"A1\" t=\"str\"><v>Test</v></c></row>");
-		expect(result).toContain("<row r=\"2\"><c r=\"B2\" t=\"n\"><v>123</v></c></row>");
+		expect(result).toContain("<row r=\"2\"><c r=\"B2\"><v>123</v></c></row>");
 	});
 
 	it("should handle different cell types correctly", () => {
@@ -47,7 +47,7 @@ describe("buildWorksheetXml", () => {
 		expect(result).toContain("<c r=\"A1\" t=\"inlineStr\"><is><t>Inline</t></is></c>");
 		expect(result).toContain("<c r=\"B1\" t=\"b\"><v>1</v></c>");
 		expect(result).toContain("<c r=\"C1\" t=\"s\"><v>Shared</v></c>");
-		expect(result).toContain("<c r=\"D1\" t=\"n\"><v>42.5</v></c>");
+		expect(result).toContain("<c r=\"D1\"><v>42.5</v></c>");
 		expect(result).toContain("<c r=\"E1\" t=\"e\"><v>Error</v></c>");
 	});
 
@@ -99,6 +99,6 @@ describe("buildCellChildren", () => {
 		]);
 
 		const result = trimAndJoinMultiline({ inputString: buildWorksheetXml(rows), separator: "" });
-		expect(result).toContain("<c r=\"A1\" t=\"n\"><v>3.14</v></c>");
+		expect(result).toContain("<c r=\"A1\"><v>3.14</v></c>");
 	});
 });

@@ -17,13 +17,19 @@ export function remove(
 ): boolean {
 	const { sheetName, strIdx } = payload;
 
+	if (!this.getSheet(sheetName)) {
+		return false;
+	}
+
 	const str = this.sharedStrings[strIdx];
+
 	if (!str) {
 		return false;
 	}
 
 	const refs = this.sharedStringRefs.get(str);
-	if (!refs) {
+
+	if (!refs || !refs.has(sheetName)) {
 		return false;
 	}
 
@@ -43,7 +49,16 @@ export function remove(
 
 		// Remove string from array and refs
 		this.sharedStrings.splice(strIdx, 1);
+		this.sharedStringMap.delete(str);
 		this.sharedStringRefs.delete(str);
+
+		// Update sharedStringMap with new indices
+		for (let i = 0; i < this.sharedStrings.length; i++) {
+			const str = this.sharedStrings[i];
+			if (str) {
+				this.sharedStringMap.set(str, i);
+			}
+		}
 
 		// Update indices across all sheets
 		for (const sheet of this.sheets.values()) {

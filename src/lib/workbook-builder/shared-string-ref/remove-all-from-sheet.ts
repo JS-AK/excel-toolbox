@@ -48,7 +48,16 @@ export function removeAllFromSheet(
 	// 3. Update sharedStrings array
 	this.sharedStrings = this.sharedStrings.filter(s => !stringsToRemove.includes(s));
 
-	// 4. Update indices in cells across all sheets
+	// 4. Update sharedStringMap with new indices
+	this.sharedStringMap.clear();
+	for (let i = 0; i < this.sharedStrings.length; i++) {
+		const str = this.sharedStrings[i];
+		if (str) {
+			this.sharedStringMap.set(str, i);
+		}
+	}
+
+	// 5. Update indices in cells across all sheets
 	for (const sheet of this.sheets.values()) {
 		for (const row of sheet.rows.values()) {
 			for (const cell of row.cells.values()) {
