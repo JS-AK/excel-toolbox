@@ -20,7 +20,7 @@ describe("merge-cells/add", () => {
 			const result = add.call(wb, { ...mergeCell, sheetName: "Sheet1" });
 
 			expect(result).toEqual(mergeCell);
-			expect(wb.mergeCells.get("Sheet1")).toContainEqual(mergeCell);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toContainEqual(mergeCell);
 		});
 
 		it("should return existing merge cell if identical range already exists", () => {
@@ -40,7 +40,7 @@ describe("merge-cells/add", () => {
 			const secondResult = add.call(wb, { ...mergeCell, sheetName: "Sheet1" });
 
 			expect(firstResult).toBe(secondResult);
-			expect(wb.mergeCells.get("Sheet1")).toHaveLength(1);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toHaveLength(1);
 		});
 
 		it("should throw error if sheet is not found", () => {
@@ -106,7 +106,7 @@ describe("merge-cells/add", () => {
 
 			expect(result1).toEqual(merge1);
 			expect(result2).toEqual(merge2);
-			expect(wb.mergeCells.get("Sheet1")).toHaveLength(2);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toHaveLength(2);
 		});
 
 		it("should handle edge case: adjacent merge cells (touching but not intersecting)", () => {
@@ -131,7 +131,7 @@ describe("merge-cells/add", () => {
 
 			expect(result1).toEqual(merge1);
 			expect(result2).toEqual(merge2);
-			expect(wb.mergeCells.get("Sheet1")).toHaveLength(2);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toHaveLength(2);
 		});
 
 		it("should handle single cell merge (start equals end)", () => {
@@ -147,7 +147,7 @@ describe("merge-cells/add", () => {
 			const result = add.call(wb, { ...singleCellMerge, sheetName: "Sheet1" });
 
 			expect(result).toEqual(singleCellMerge);
-			expect(wb.mergeCells.get("Sheet1")).toContainEqual(singleCellMerge);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toContainEqual(singleCellMerge);
 		});
 
 		it("should handle large merge ranges", () => {
@@ -163,7 +163,7 @@ describe("merge-cells/add", () => {
 			const result = add.call(wb, { ...largeMerge, sheetName: "Sheet1" });
 
 			expect(result).toEqual(largeMerge);
-			expect(wb.mergeCells.get("Sheet1")).toContainEqual(largeMerge);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toContainEqual(largeMerge);
 		});
 
 		it("should work with multiple sheets independently", () => {
@@ -190,8 +190,8 @@ describe("merge-cells/add", () => {
 
 			expect(result1).toEqual(merge1);
 			expect(result2).toEqual(merge2);
-			expect(wb.mergeCells.get("Sheet1")).toHaveLength(1);
-			expect(wb.mergeCells.get("Sheet2")).toHaveLength(1);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toHaveLength(1);
+			expect(wb.getInfo().mergeCells.get("Sheet2")).toHaveLength(1);
 		});
 	});
 });

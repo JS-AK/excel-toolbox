@@ -27,10 +27,10 @@ export function add(
 		idx = this.sharedStrings.length;
 		this.sharedStrings.push(str);
 		this.sharedStringMap.set(str, idx);
-		this.sharedStringRefs.set(str, new Set([sheetName]));
+		// this.sharedStringRefs.set(str, new Set([sheetName]));
 	} else {
 		// Add sheet name to Set if not already present
-		this.sharedStringRefs.get(str)?.add(sheetName);
+		// this.sharedStringRefs.get(str)?.add(sheetName);
 	}
 
 	return idx;

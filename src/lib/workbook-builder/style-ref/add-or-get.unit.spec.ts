@@ -25,9 +25,9 @@ describe("addOrGet()", () => {
 
 		expect(idx).toBe(1); // дефолтный стиль уже занимает 0
 
-		expect(wb.cellXfs.at(-1)).toEqual({ alignment: { horizontal: "center" }, borderId: 1, fillId: 1, fontId: 1, numFmtId: 164 });
-		expect(wb.fills.at(-1)).toEqual({ children: [{ attrs: { patternType: "solid" }, children: [], tag: "patternFill" }], tag: "fill" });
-		expect(wb.fonts.at(-1)).toEqual({
+		expect(wb.getInfo().styles.cellXfs.at(-1)).toEqual({ alignment: { horizontal: "center" }, borderId: 1, fillId: 1, fontId: 1, numFmtId: 164 });
+		expect(wb.getInfo().styles.fills.at(-1)).toEqual({ children: [{ attrs: { patternType: "solid" }, children: [], tag: "patternFill" }], tag: "fill" });
+		expect(wb.getInfo().styles.fonts.at(-1)).toEqual({
 			children: [
 				{ attrs: { val: "11" }, tag: "sz" },
 				{ attrs: { theme: "1" }, tag: "color" },
@@ -35,7 +35,7 @@ describe("addOrGet()", () => {
 			],
 			tag: "font",
 		});
-		expect(wb.borders.at(-1)).toEqual({
+		expect(wb.getInfo().styles.borders.at(-1)).toEqual({
 			children: [
 				{ tag: "left" },
 				{ tag: "right" },
@@ -43,17 +43,17 @@ describe("addOrGet()", () => {
 				{ attrs: { style: "medium" }, children: [{ attrs: { rgb: "FFFF0000" }, tag: "color" }], tag: "bottom" },
 			], tag: "border",
 		});
-		expect(wb.numFmts.at(-1)).toEqual({ formatCode: "dd/mm/yyyy", id: 164 });
+		expect(wb.getInfo().styles.numFmts.at(-1)).toEqual({ formatCode: "dd/mm/yyyy", id: 164 });
 
-		expect(wb.styleMap.get(JSON.stringify({ alignment: { horizontal: "center" }, borderId: 1, fillId: 1, fontId: 1, numFmtId: 164 }))).toBe(1);
+		expect(wb.getInfo().styles.styleMap.get(JSON.stringify({ alignment: { horizontal: "center" }, borderId: 1, fillId: 1, fontId: 1, numFmtId: 164 }))).toBe(1);
 
-		expect(wb.cellXfs).toHaveLength(2);
-		expect(wb.fills).toHaveLength(2);
-		expect(wb.fonts).toHaveLength(2);
-		expect(wb.borders).toHaveLength(2);
-		expect(wb.numFmts).toHaveLength(1);
+		expect(wb.getInfo().styles.cellXfs).toHaveLength(2);
+		expect(wb.getInfo().styles.fills).toHaveLength(2);
+		expect(wb.getInfo().styles.fonts).toHaveLength(2);
+		expect(wb.getInfo().styles.borders).toHaveLength(2);
+		expect(wb.getInfo().styles.numFmts).toHaveLength(1);
 
-		expect(wb.styleMap.size).toBe(1);
+		expect(wb.getInfo().styles.styleMap.size).toBe(1);
 	});
 
 	it("повторное добавление того же стиля возвращает тот же индекс", () => {
@@ -69,12 +69,12 @@ describe("addOrGet()", () => {
 		const idx2 = addOrGet.call(wb, { sheetName: "Sheet1", style });
 
 		expect(idx1).toBe(idx2);
-		expect(wb.cellXfs).toHaveLength(2);
-		expect(wb.fills).toHaveLength(2);
-		expect(wb.fonts).toHaveLength(2);
-		expect(wb.borders).toHaveLength(2);
-		expect(wb.numFmts).toHaveLength(1);
-		expect(wb.styleMap.size).toBe(1);
+		expect(wb.getInfo().styles.cellXfs).toHaveLength(2);
+		expect(wb.getInfo().styles.fills).toHaveLength(2);
+		expect(wb.getInfo().styles.fonts).toHaveLength(2);
+		expect(wb.getInfo().styles.borders).toHaveLength(2);
+		expect(wb.getInfo().styles.numFmts).toHaveLength(1);
+		expect(wb.getInfo().styles.styleMap.size).toBe(1);
 	});
 
 	it("разные стили создают разные индексы", () => {
@@ -96,9 +96,9 @@ describe("addOrGet()", () => {
 
 		expect(idx1).toBe(1);
 		expect(idx2).toBe(2);
-		expect(wb.cellXfs).toHaveLength(3);
-		expect(wb.fonts).toHaveLength(3);
-		expect(wb.styleMap.size).toBe(2);
+		expect(wb.getInfo().styles.cellXfs).toHaveLength(3);
+		expect(wb.getInfo().styles.fonts).toHaveLength(3);
+		expect(wb.getInfo().styles.styleMap.size).toBe(2);
 	});
 
 	it("если numberFormat не задан, то numFmtId = 0", () => {
@@ -111,6 +111,6 @@ describe("addOrGet()", () => {
 		const idx = addOrGet.call(wb, { sheetName: "Sheet1", style });
 
 		expect(idx).toBe(1);
-		expect(wb.cellXfs[idx].numFmtId).toBe(0);
+		expect(wb.getInfo().styles.cellXfs[idx].numFmtId).toBe(0);
 	});
 });

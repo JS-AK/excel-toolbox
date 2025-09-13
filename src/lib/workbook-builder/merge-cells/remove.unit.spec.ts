@@ -20,13 +20,13 @@ describe("merge-cells/remove", () => {
 
 			// Add merge cell first
 			add.call(wb, { ...mergeCell, sheetName: "Sheet1" });
-			expect(wb.mergeCells.get("Sheet1")).toHaveLength(1);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toHaveLength(1);
 
 			// Remove merge cell
 			const result = remove.call(wb, { ...mergeCell, sheetName: "Sheet1" });
 
 			expect(result).toBe(true);
-			expect(wb.mergeCells.get("Sheet1")).toHaveLength(0);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toHaveLength(0);
 		});
 
 		it("should throw error if sheet is not found", () => {
@@ -88,16 +88,16 @@ describe("merge-cells/remove", () => {
 			add.call(wb, { ...merge2, sheetName: "Sheet1" });
 			add.call(wb, { ...merge3, sheetName: "Sheet1" });
 
-			expect(wb.mergeCells.get("Sheet1")).toHaveLength(3);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toHaveLength(3);
 
 			// Remove middle merge cell
 			const result = remove.call(wb, { ...merge2, sheetName: "Sheet1" });
 
 			expect(result).toBe(true);
-			expect(wb.mergeCells.get("Sheet1")).toHaveLength(2);
-			expect(wb.mergeCells.get("Sheet1")).toContainEqual(merge1);
-			expect(wb.mergeCells.get("Sheet1")).toContainEqual(merge3);
-			expect(wb.mergeCells.get("Sheet1")).not.toContainEqual(merge2);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toHaveLength(2);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toContainEqual(merge1);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toContainEqual(merge3);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).not.toContainEqual(merge2);
 		});
 
 		it("should handle removing from empty sheet", () => {
@@ -130,16 +130,16 @@ describe("merge-cells/remove", () => {
 			add.call(wb, { ...mergeCell, sheetName: "Sheet1" });
 			add.call(wb, { ...mergeCell, sheetName: "Sheet2" });
 
-			expect(wb.mergeCells.get("Sheet1")).toHaveLength(1);
-			expect(wb.mergeCells.get("Sheet2")).toHaveLength(1);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toHaveLength(1);
+			expect(wb.getInfo().mergeCells.get("Sheet2")).toHaveLength(1);
 
 			// Remove from Sheet1 only
 			const result = remove.call(wb, { ...mergeCell, sheetName: "Sheet1" });
 
 			expect(result).toBe(true);
-			expect(wb.mergeCells.get("Sheet1")).toHaveLength(0);
-			expect(wb.mergeCells.get("Sheet2")).toHaveLength(1);
-			expect(wb.mergeCells.get("Sheet2")).toContainEqual(mergeCell);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toHaveLength(0);
+			expect(wb.getInfo().mergeCells.get("Sheet2")).toHaveLength(1);
+			expect(wb.getInfo().mergeCells.get("Sheet2")).toContainEqual(mergeCell);
 		});
 
 		it("should handle single cell merge removal", () => {
@@ -154,13 +154,13 @@ describe("merge-cells/remove", () => {
 
 			// Add single cell merge
 			add.call(wb, { ...singleCellMerge, sheetName: "Sheet1" });
-			expect(wb.mergeCells.get("Sheet1")).toHaveLength(1);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toHaveLength(1);
 
 			// Remove single cell merge
 			const result = remove.call(wb, { ...singleCellMerge, sheetName: "Sheet1" });
 
 			expect(result).toBe(true);
-			expect(wb.mergeCells.get("Sheet1")).toHaveLength(0);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toHaveLength(0);
 		});
 
 		it("should handle large merge range removal", () => {
@@ -175,13 +175,13 @@ describe("merge-cells/remove", () => {
 
 			// Add large merge
 			add.call(wb, { ...largeMerge, sheetName: "Sheet1" });
-			expect(wb.mergeCells.get("Sheet1")).toHaveLength(1);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toHaveLength(1);
 
 			// Remove large merge
 			const result = remove.call(wb, { ...largeMerge, sheetName: "Sheet1" });
 
 			expect(result).toBe(true);
-			expect(wb.mergeCells.get("Sheet1")).toHaveLength(0);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toHaveLength(0);
 		});
 
 		it("should not remove merge cell with different coordinates", () => {
@@ -203,7 +203,7 @@ describe("merge-cells/remove", () => {
 
 			// Add original merge
 			add.call(wb, { ...originalMerge, sheetName: "Sheet1" });
-			expect(wb.mergeCells.get("Sheet1")).toHaveLength(1);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toHaveLength(1);
 
 			// Try to remove different merge
 			expect(() => {
@@ -211,8 +211,8 @@ describe("merge-cells/remove", () => {
 			}).toThrow("Invalid merge cell");
 
 			// Original merge should still exist
-			expect(wb.mergeCells.get("Sheet1")).toHaveLength(1);
-			expect(wb.mergeCells.get("Sheet1")).toContainEqual(originalMerge);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toHaveLength(1);
+			expect(wb.getInfo().mergeCells.get("Sheet1")).toContainEqual(originalMerge);
 		});
 	});
 });

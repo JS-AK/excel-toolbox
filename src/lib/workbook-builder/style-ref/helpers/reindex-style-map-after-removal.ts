@@ -5,6 +5,7 @@ export const reindexStyleMapAfterRemoval = (payload: {
 	const { removedIndex, styleMap } = payload;
 
 	const updates: Array<[string, number]> = [];
+
 	for (const [key, idx] of styleMap.entries()) {
 		if (idx === removedIndex) {
 			styleMap.delete(key);
@@ -12,6 +13,7 @@ export const reindexStyleMapAfterRemoval = (payload: {
 			updates.push([key, idx - 1]);
 		}
 	}
+
 	for (const [key, newIdx] of updates) {
 		styleMap.set(key, newIdx);
 	}

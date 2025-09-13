@@ -1,43 +1,69 @@
-import { CellStyle } from "../utils/sheet.js";
-import { WorkbookBuilder } from "../workbook-builder.js";
+import type { CellStyle } from "../utils/sheet.js";
+import type { WorkbookBuilder } from "../workbook-builder.js";
 
-import * as Helpers from "./helpers/index.js";
+// import * as Helpers from "./helpers/index.js";
 
+/**
+ * Validates a cell style index and checks if the style exists in the workbook.
+ * This function performs validation checks on the provided style index and
+ * verifies that the style exists at the given index in the cellXfs array.
+ *
+ * @param this - The WorkbookBuilder instance
+ * @param payload - Object containing the style to validate
+ * @param payload.style - The cell style configuration with index
+ *
+ * @returns True if the style index is valid and the style exists
+ *
+ * @throws {Error} When styleIndex is invalid (not a number) or when style doesn't exist at the given index
+ */
 export function remove(
 	this: WorkbookBuilder,
 	payload: { style: CellStyle },
-): boolean {
+): true {
 	const { style } = payload;
 
 	const styleIndex = style.index;
-	if (styleIndex === undefined || styleIndex === null) {
-		throw new Error("Invalid styleIndex");
+
+	if (typeof styleIndex !== "number") {
+		throw new Error("Invalid styleIndex: not a number");
 	}
 
-	let removedSomething = false;
+	if (styleIndex === 0) {
+		throw new Error("Invalid styleIndex: 0 is the default style and cannot be removed");
+	}
 
-	// Снимем части до splice — индексы ещё валидны
 	const xf = this.cellXfs[styleIndex];
 
-	if (xf) {
-		this.cellXfs.splice(styleIndex, 1);
-
-		// почин: переиндексация styleMap после splice
-		Helpers.reindexStyleMapAfterRemoval({ removedIndex: styleIndex, styleMap: this.styleMap });
-
-		// переиндексация ссылок в ячейках на всех листах
-		for (const sheet of this.sheets.values()) {
-			for (const row of sheet.rows.values()) {
-				for (const cell of row.cells.values()) {
-					if (cell.style?.index !== undefined && cell.style.index > styleIndex) {
-						cell.style.index -= 1;
-					}
-				}
-			}
-		}
-
-		removedSomething = true;
+	if (!xf) {
+		throw new Error(`Invalid styleIndex: style not found at index ${styleIndex}`);
 	}
 
-	return removedSomething;
+	return true;
+
+	// let removedSomething = false;
+
+	// // Get style parts before splice - indices are still valid
+	// const xf = this.cellXfs[styleIndex];
+
+	// if (xf) {
+	// 	this.cellXfs.splice(styleIndex, 1);
+
+	// 	// Fix: reindex styleMap after splice
+	// 	Helpers.reindexStyleMapAfterRemoval({ removedIndex: styleIndex, styleMap: this.styleMap });
+
+	// 	// Reindex style references in cells across all sheets
+	// 	for (const sheet of this.sheets.values()) {
+	// 		for (const row of sheet.rows.values()) {
+	// 			for (const cell of row.cells.values()) {
+	// 				if (cell.style?.index !== undefined && cell.style.index > styleIndex) {
+	// 					cell.style.index -= 1;
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+
+	// 	removedSomething = true;
+	// }
+
+	// return removedSomething;
 }

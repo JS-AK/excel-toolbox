@@ -24,7 +24,7 @@ export class WorkbookBuilder {
 	// Все что касается shared strings
 	#sharedStrings: string[] = [];
 	#sharedStringMap: Map<string, number> = new Map(); // key = строка, value = индекс в массиве
-	#sharedStringRefs: Map<string, Set<string>> = new Map(); // key = строка, value = множество листов
+	// #sharedStringRefs: Map<string, Set<string>> = new Map(); // key = строка, value = множество листов
 
 	// Все что касается styles
 	#borders: NonNullable<Utils.XmlNode["children"]>;
@@ -78,9 +78,9 @@ export class WorkbookBuilder {
 		return this.#sharedStringMap;
 	}
 
-	protected get sharedStringRefs() {
-		return this.#sharedStringRefs;
-	}
+	// protected get sharedStringRefs() {
+	// 	return this.#sharedStringRefs;
+	// }
 
 	protected get borders() {
 		return this.#borders;
@@ -258,23 +258,82 @@ export class WorkbookBuilder {
 		return true;
 	}
 
-	getInfo() {
-		return {
+	getInfo(): {
+		mergeCells: Map<string, MergeCells.MergeCell[]>;
+
+		sheetsNames: string[];
+
+		sharedStringMap: Map<string, number>;
+		// sharedStringRefs: Map<string, Set<string>>;
+		sharedStrings: string[];
+
+		styles: {
+			borders: NonNullable<Utils.XmlNode["children"]>;
+			cellXfs: Utils.CellXfs;
+			fills: NonNullable<Utils.XmlNode["children"]>;
+			fonts: NonNullable<Utils.XmlNode["children"]>;
+			numFmts: { formatCode: string; id: number }[];
+			styleMap: Map<string, number>;
+		};
+	} {
+		function deepFreeze<T>(obj: T): T {
+			if (obj === null || obj === undefined) {
+				return obj;
+			}
+
+			if (typeof obj !== "object") {
+				// string | number | boolean | symbol
+				return obj;
+			}
+
+			if (Array.isArray(obj)) {
+				return Object.freeze(obj.map(item => deepFreeze(item))) as T;
+			}
+
+			if (obj instanceof Map) {
+				const frozenMap = new Map(
+					Array.from(obj.entries()).map(([k, v]) => [k, deepFreeze(v)]),
+				);
+				return Object.freeze(frozenMap) as T;
+			}
+
+			if (obj instanceof Set) {
+				const frozenSet = new Set(Array.from(obj.values()).map(v => deepFreeze(v)));
+				return Object.freeze(frozenSet) as T;
+			}
+
+			// XmlNode или произвольный объект
+			const frozenObj: Record<string, unknown> = {};
+			for (const [k, v] of Object.entries(obj)) {
+				frozenObj[k] = deepFreeze(v);
+			}
+			return Object.freeze(frozenObj) as T;
+		}
+
+		return deepFreeze({
+			mergeCells: new Map(this.#mergeCells),
+
 			sheetsNames: Array.from(this.#sheets.values()).map((sheet) => sheet.name),
 
-			sharedStringMap: this.#sharedStringMap,
-			sharedStringRefs: this.#sharedStringRefs,
-			sharedStrings: this.#sharedStrings,
+			sharedStringMap: new Map(this.#sharedStringMap),
+			// sharedStringRefs: (() => {
+			// 	const immutableMap = new Map<string, Set<string>>();
+			// 	for (const [key, value] of this.#sharedStringRefs) {
+			// 		immutableMap.set(key, new Set(value));
+			// 	}
+			// 	return immutableMap;
+			// })(),
+			sharedStrings: [...this.#sharedStrings],
 
 			styles: {
-				borders: JSON.stringify(this.#borders),
-				cellXfs: JSON.stringify(this.#cellXfs),
-				fills: JSON.stringify(this.#fills),
-				fonts: JSON.stringify(this.#fonts),
-				numFmts: JSON.stringify(this.#numFmts),
-				styleMap: this.#styleMap,
+				borders: [...this.#borders],
+				cellXfs: [...this.#cellXfs],
+				fills: [...this.#fills],
+				fonts: [...this.#fonts],
+				numFmts: [...this.#numFmts],
+				styleMap: new Map(this.#styleMap),
 			},
-		};
+		});
 	}
 
 	async saveToFile(path: string) {
