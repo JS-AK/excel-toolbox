@@ -5,11 +5,23 @@ import readline from "node:readline";
 
 import { XML_DECLARATION, XML_NAMESPACES } from "./constants.js";
 
-import { MergeCell, RowData, SheetData } from "../types/index.js";
+import type { MergeCell, RowData, SheetData } from "../types/index.js";
 
 import { columnIndexToLetter } from "../../template/utils/column-index-to-letter.js";
 import { columnLetterToIndex } from "../../template/utils/column-letter-to-index.js";
 
+/**
+ * Writes a worksheet XML file to the given destination using a streaming approach.
+ *
+ * - Streams rows and cells to minimize memory usage
+ * - Tracks the worksheet dimension (min/max rows/cols) while streaming
+ * - Updates the <dimension> ref at the end by rewriting the file in a buffered pass
+ *
+ * @param destination - Absolute or relative file path for the worksheet XML
+ * @param rows - Map of rowIndex -> RowData with cells
+ * @param merges - Merge ranges to append after <sheetData>
+ * @returns Promise that resolves when the file is fully written and dimension updated
+ */
 export async function writeWorksheetXml(
 	destination: string,
 	rows: SheetData["rows"] = new Map<number, RowData>(),
@@ -195,6 +207,13 @@ export async function writeWorksheetXml(
 // 	await fsPromises.rename(tempPath, destination);
 // }
 
+/**
+ * Updates the <dimension> ref attribute in an existing worksheet XML file.
+ * Performs a buffered line-by-line rewrite to a temporary file, then renames it in place.
+ *
+ * @param destination - Path to the worksheet XML file to update
+ * @param dimensionRef - Final dimension reference, e.g., "A1:C25"
+ */
 async function updateWorksheetDimensionInFile(
 	destination: string,
 	dimensionRef: string,
@@ -231,12 +250,12 @@ async function updateWorksheetDimensionInFile(
 		}
 	}
 
-	// Записать остаток буфера
+	// Write remaining buffer
 	if (buffer) writeStream.write(buffer);
 
-	// Закрыть потоки
+	// Close streams
 	await new Promise<void>(resolve => writeStream.end(resolve));
 
-	// Заменяем оригинальный файл
+	// Replace original file
 	await fsPromises.rename(tempPath, destination);
 }

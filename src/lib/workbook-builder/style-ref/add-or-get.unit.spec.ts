@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { CellStyle } from "../types/index.js";
+import type { CellStyle } from "../types/index.js";
 
 import { WorkbookBuilder } from "../workbook-builder.js";
 import { addOrGet } from "./add-or-get.js";
@@ -12,7 +12,7 @@ describe("addOrGet()", () => {
 		wb = new WorkbookBuilder();
 	});
 
-	it("добавляет новый стиль и возвращает его индекс", () => {
+	it("adds a new style and returns its index", () => {
 		const style: CellStyle = {
 			alignment: { horizontal: "center" },
 			border: { bottom: { color: "FFFF0000", style: "medium" } },
@@ -23,7 +23,7 @@ describe("addOrGet()", () => {
 
 		const idx = addOrGet.call(wb, { sheetName: "Sheet1", style });
 
-		expect(idx).toBe(1); // дефолтный стиль уже занимает 0
+		expect(idx).toBe(1); // default style occupies index 0
 
 		expect(wb.getInfo().styles.cellXfs.at(-1)).toEqual({ alignment: { horizontal: "center" }, borderId: 1, fillId: 1, fontId: 1, numFmtId: 164 });
 		expect(wb.getInfo().styles.fills.at(-1)).toEqual({ children: [{ attrs: { patternType: "solid" }, children: [], tag: "patternFill" }], tag: "fill" });
@@ -56,7 +56,7 @@ describe("addOrGet()", () => {
 		expect(wb.getInfo().styles.styleMap.size).toBe(1);
 	});
 
-	it("повторное добавление того же стиля возвращает тот же индекс", () => {
+	it("adding the same style again returns the same index", () => {
 		const style: CellStyle = {
 			alignment: { horizontal: "center" },
 			border: { bottom: { color: "FFFF0000", style: "medium" } },
@@ -77,7 +77,7 @@ describe("addOrGet()", () => {
 		expect(wb.getInfo().styles.styleMap.size).toBe(1);
 	});
 
-	it("разные стили создают разные индексы", () => {
+	it("different styles produce different indices", () => {
 		const style1: CellStyle = {
 			border: { bottom: { color: "FFFF0000", style: "medium" } },
 			fill: { patternType: "solid" },
@@ -101,7 +101,7 @@ describe("addOrGet()", () => {
 		expect(wb.getInfo().styles.styleMap.size).toBe(2);
 	});
 
-	it("если numberFormat не задан, то numFmtId = 0", () => {
+	it("if numberFormat is not set, then numFmtId = 0", () => {
 		const style: CellStyle = {
 			border: { bottom: { color: "FFFF0000", style: "medium" } },
 			fill: { patternType: "solid" },

@@ -3,11 +3,25 @@ import fsPromises from "node:fs/promises";
 import path from "node:path";
 
 import * as Default from "../default/index.js";
-import { CellXf, XmlNode } from "../types/index.js";
+
+import type { CellXf, XmlNode } from "../types/index.js";
 
 import { XML_DECLARATION, XML_NAMESPACES } from "./constants.js";
 import { writeXml } from "./write-xml.js";
 
+/**
+ * Writes the `styles.xml` part to a file at the given destination using a write stream.
+ * Falls back to default font/fill/border collections when none are provided.
+ *
+ * @param destination - Absolute or relative file path to write
+ * @param data - Style collections used to construct the stylesheet
+ * @param data.borders - Array of border XmlNodes
+ * @param data.cellXfs - Array of cell format records
+ * @param data.fills - Array of fill XmlNodes
+ * @param data.fonts - Array of font XmlNodes
+ * @param data.numFmts - Array of custom number formats (formatCode and id)
+ * @returns Promise that resolves when the write stream finishes
+ */
 export async function writeStylesXml(
 	destination: string,
 	data?: {
@@ -18,7 +32,7 @@ export async function writeStylesXml(
 		numFmts: { formatCode: string; id: number }[];
 	},
 ): Promise<void> {
-	// create with folder
+	// Ensure destination folder exists
 	await fsPromises.mkdir(path.dirname(destination), { recursive: true });
 
 	const stream = fs.createWriteStream(destination, { encoding: "utf-8" });
@@ -145,7 +159,7 @@ export async function writeStylesXml(
 				tag: "cellXfs",
 			});
 		} else {
-			//<!--базовый стиль без заливки-- >
+			// Base style without fill
 			children.push({
 				attrs: { count: "1" },
 				children: [

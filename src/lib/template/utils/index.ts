@@ -7,7 +7,6 @@ export * from "./check-start-row.js";
 export * from "./column-index-to-letter.js";
 export * from "./column-letter-to-index.js";
 export * from "./compare-columns.js";
-export * from "./escape-xml.js";
 export * from "./extract-xml-declaration.js";
 export * from "./found-arrays-in-replacements.js";
 export * from "./get-by-path.js";

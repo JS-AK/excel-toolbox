@@ -5,6 +5,7 @@ import * as readline from "node:readline";
 import { Writable } from "node:stream";
 import crypto from "node:crypto";
 
+import * as SharedUtils from "../utils/index.js";
 import * as Xml from "../xml/index.js";
 import * as Zip from "../zip/index.js";
 
@@ -576,7 +577,7 @@ export class TemplateFs {
 					const colUpper = col.toUpperCase();
 					const ref = `${colUpper}${rowNumber}`;
 
-					return `<c r="${ref}" t="inlineStr"><is><t>${Utils.escapeXml(value)}</t></is></c>`;
+					return `<c r="${ref}" t="inlineStr"><is><t>${SharedUtils.escapeXml(value)}</t></is></c>`;
 				}).join("");
 
 				return `<row r="${rowNumber}">${cellTags}</row>`;

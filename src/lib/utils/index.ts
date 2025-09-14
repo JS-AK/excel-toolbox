@@ -1,3 +1,4 @@
+export * from "./escape-xml.js";
 export * from "./get-max-row-number.js";
 export * from "./is-same-buffer.js";
 export * from "./remove-sheet-by-name.js";

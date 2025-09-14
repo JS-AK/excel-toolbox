@@ -1,10 +1,22 @@
 import * as Default from "../default/index.js";
 
-import { CellXf, XmlNode } from "../types/index.js";
+import type { CellXf, XmlNode } from "../types/index.js";
 
 import { XML_DECLARATION, XML_NAMESPACES } from "./constants.js";
 import { buildXml } from "./build-xml.js";
 
+/**
+ * Builds the `styles.xml` part for the workbook based on provided style collections.
+ * Falls back to default font/fill/border collections when none are provided.
+ *
+ * @param data - Style collections used to construct the stylesheet
+ * @param data.borders - Array of border XmlNodes
+ * @param data.cellXfs - Array of cell format records
+ * @param data.fills - Array of fill XmlNodes
+ * @param data.fonts - Array of font XmlNodes
+ * @param data.numFmts - Array of custom number formats (formatCode and id)
+ * @returns XML string for the styles part
+ */
 export function buildStylesXml(data?: {
 	borders: XmlNode["children"];
 	cellXfs: CellXf[];
@@ -132,7 +144,7 @@ export function buildStylesXml(data?: {
 			tag: "cellXfs",
 		});
 	} else {
-		//<!--базовый стиль без заливки-- >
+		// Base style without fill
 		children.push({
 			attrs: { count: "1" },
 			children: [

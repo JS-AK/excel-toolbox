@@ -476,6 +476,7 @@ export class WorkbookBuilder {
 
 				await fs.mkdir(path.dirname(fullPath), { recursive: true });
 				await fs.writeFile(fullPath, value);
+
 				fileKeys.push(key);
 			}
 

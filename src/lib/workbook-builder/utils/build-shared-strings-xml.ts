@@ -1,20 +1,18 @@
+import { escapeXml } from "../../utils/index.js";
+
 import { XML_DECLARATION, XML_NAMESPACES } from "./constants.js";
 import { buildXml } from "./build-xml.js";
 
 /**
- * Создаёт содержимое файла `sharedStrings.xml` на основе переданных строк.
+ * Builds the `sharedStrings.xml` content from the provided strings.
  *
- * @param strings - Массив уникальных строк, используемых в книге
+ * Note: According to the Excel specification, leading/trailing spaces in text
+ * nodes must set the attribute `xml:space="preserve"` on the corresponding <t>.
+ *
+ * @param strings - Array of unique strings used in the workbook
+ * @returns XML string for the shared strings part
  */
 export function buildSharedStringsXml(strings: string[] = []): string {
-	const escapeXml = (str: string) =>
-		str
-			.replace(/&/g, "&amp;")
-			.replace(/</g, "&lt;")
-			.replace(/>/g, "&gt;")
-			.replace(/"/g, "&quot;")
-			.replace(/'/g, "&apos;");
-
 	return [
 		XML_DECLARATION,
 		buildXml({
@@ -26,7 +24,7 @@ export function buildSharedStringsXml(strings: string[] = []): string {
 			children: strings.map((s) => ({
 				children: [
 					{
-						// По спецификации Excel: пробелы в начале/конце требуют xml:space="preserve"
+						// Excel spec: leading/trailing spaces require xml:space="preserve"
 						attrs: /^\s|\s$/.test(s) ? { "xml:space": "preserve" } : undefined,
 						children: [escapeXml(s)],
 						tag: "t",

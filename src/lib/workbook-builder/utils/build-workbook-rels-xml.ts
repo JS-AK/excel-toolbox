@@ -1,8 +1,16 @@
 import { RELATIONSHIP_TYPES, XML_DECLARATION, XML_NAMESPACES } from "./constants.js";
 import { buildXml } from "./build-xml.js";
 
+/**
+ * Builds the `_rels/workbook.xml.rels` content for the given number of sheets.
+ *
+ * Relationships are created for each worksheet and then for styles, theme, and shared strings.
+ *
+ * @param sheetsCount - Number of worksheets in the workbook
+ * @returns XML string for the workbook relationships part
+ */
 export function buildWorkbookRels(sheetsCount: number): string {
-	// Создаем relationship для листов
+	// Create relationships for each worksheet
 	const sheetRels = Array.from({ length: sheetsCount }, (_, i) => ({
 		attrs: {
 			Id: `rId${i + 1}`,
@@ -12,7 +20,7 @@ export function buildWorkbookRels(sheetsCount: number): string {
 		tag: "Relationship",
 	}));
 
-	// Id для стилей и sharedStrings идут после листов
+	// Ids for styles, theme, and sharedStrings follow after the worksheets
 	const stylesRel = {
 		attrs: {
 			Id: `rId${sheetsCount + 1}`,

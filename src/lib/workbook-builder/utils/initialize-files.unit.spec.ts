@@ -15,7 +15,7 @@ import { initializeFiles } from "./initialize-files.js";
 import { sheetName } from "../default/index.js";
 
 describe("initializeFiles", () => {
-	it("должна возвращать объект с обязательными ключами", () => {
+	it("should return an object with required keys", () => {
 		const files = initializeFiles(sheetName());
 
 		const files2 = {
@@ -446,7 +446,7 @@ describe("initializeFiles", () => {
 		);
 	});
 
-	it("каждый XML должен начинаться с декларации", () => {
+	it("each XML should start with a declaration", () => {
 		const files = initializeFiles(sheetName());
 
 		for (const [, content] of Object.entries(files)) {
@@ -455,7 +455,7 @@ describe("initializeFiles", () => {
 		}
 	});
 
-	it("[Content_Types].xml содержит правильные Override и Default", () => {
+	it("[Content_Types].xml contains correct Override and Default entries", () => {
 		const content = initializeFiles(sheetName())[FILE_PATHS.CONTENT_TYPES].toString();
 
 		expect(content).toContain(`<Default ContentType="${CONTENT_TYPES.RELATIONSHIPS}" Extension="rels"/>`);
@@ -465,13 +465,13 @@ describe("initializeFiles", () => {
 		expect(content).toContain(`<Override ContentType="${CONTENT_TYPES.SHARED_STRINGS}" PartName="/xl/sharedStrings.xml"/>`);
 	});
 
-	it("_rels/.rels содержит ссылку на workbook.xml", () => {
+	it("_rels/.rels contains a relationship to workbook.xml", () => {
 		const content = initializeFiles(sheetName())[FILE_PATHS.RELS].toString();
 
 		expect(content).toContain(`<Relationship Id="rId1" Target="xl/workbook.xml" Type="${RELATIONSHIP_TYPES.OFFICE_DOCUMENT}"/>`);
 	});
 
-	it("workbook.xml содержит тег <sheets>", () => {
+	it("workbook.xml contains <sheets> tag", () => {
 		const content = initializeFiles(sheetName())[FILE_PATHS.WORKBOOK].toString();
 
 		expect(content).toContain("<sheets>");
@@ -480,19 +480,19 @@ describe("initializeFiles", () => {
 		expect(content).toContain(`xmlns:r="${XML_NAMESPACES.OFFICE_DOCUMENT}"`);
 	});
 
-	it("styles.xml содержит пустой styleSheet с нужным xmlns", () => {
+	it("styles.xml contains a base styleSheet with required xmlns", () => {
 		const content = initializeFiles(sheetName())[FILE_PATHS.STYLES].toString();
 
 		expect(content).toContain(`<styleSheet xmlns="${XML_NAMESPACES.SPREADSHEET_ML}">`);
 	});
 
-	it("sharedStrings.xml содержит sst с count=0 и uniqueCount=0", () => {
+	it("sharedStrings.xml contains sst with count=0 and uniqueCount=0", () => {
 		const content = initializeFiles(sheetName())[FILE_PATHS.SHARED_STRINGS].toString();
 
 		expect(content).toContain(`<sst count="0" uniqueCount="0" xmlns="${XML_NAMESPACES.SPREADSHEET_ML}"/>`);
 	});
 
-	it("xl/_rels/workbook.xml.rels изначально пустой список Relationships", () => {
+	it("xl/_rels/workbook.xml.rels initially contains an empty Relationships list", () => {
 		const content = initializeFiles(sheetName())[FILE_PATHS.WORKBOOK_RELS].toString();
 
 		expect(content).toContain(`<Relationships xmlns="${XML_NAMESPACES.PACKAGE_RELATIONSHIPS}">`);
