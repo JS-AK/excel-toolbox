@@ -1,5 +1,6 @@
+import { escapeXml } from "../../utils/index.js";
+
 import { columnIndexToLetter } from "./column-index-to-letter.js";
-import { escapeXml } from "./escape-xml.js";
 
 export function prepareRowToCells(row: unknown[], rowNumber: number) {
 	return row.map((value, colIndex) => {

@@ -41,7 +41,7 @@ export function validateWorksheetXml(xml: string): ValidationResult {
 	const requiredElements = [
 		{ name: "sheetViews", tag: "<sheetViews>" },
 		{ name: "sheetFormatPr", tag: "<sheetFormatPr" },
-		{ name: "sheetData", tag: "<sheetData>" },
+		{ name: "sheetData", tag: "<sheetData" },
 	];
 
 	for (const { name, tag } of requiredElements) {
@@ -51,18 +51,29 @@ export function validateWorksheetXml(xml: string): ValidationResult {
 	}
 
 	// 3. Extract and validate sheetData
-	const sheetDataStart = xml.indexOf("<sheetData>");
-	const sheetDataEnd = xml.indexOf("</sheetData>");
-	if (sheetDataStart === -1 || sheetDataEnd === -1) {
-		return createError("Invalid sheetData structure");
+	// 3. Extract and validate sheetData
+	// Поддержка пустого <sheetData/> или обычного открывающего-закрывающего тега
+	const sheetDataMatch = xml.match(/<sheetData([^>]*)>/);
+	if (!sheetDataMatch) {
+		return createError("Missing sheetData element");
 	}
 
-	const sheetDataContent = xml.substring(sheetDataStart + 10, sheetDataEnd);
-	const rows = sheetDataContent.split("</row>");
+	const isSelfClosing = sheetDataMatch[1]?.includes("/"); // <sheetData/> самозакрывающийся
+	let sheetDataContent = "";
 
-	if (rows.length < 2) {
-		return createError("SheetData should contain at least one row");
+	if (!isSelfClosing) {
+		const sheetDataStart = sheetDataMatch.index! + sheetDataMatch[0].length;
+		const sheetDataEnd = xml.indexOf("</sheetData>", sheetDataStart);
+		if (sheetDataEnd === -1) {
+			return createError("Invalid sheetData structure: missing closing tag");
+		}
+		sheetDataContent = xml.substring(sheetDataStart, sheetDataEnd);
 	}
+
+	// Разбиваем на строки, если есть содержимое
+	const rows = sheetDataContent
+		? sheetDataContent.split("</row>").map(r => r.trim()).filter(r => r.length)
+		: [];
 
 	// Collect information about all rows and cells
 	const allRows: number[] = [];
