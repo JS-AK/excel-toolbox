@@ -40,8 +40,14 @@ export class WorkbookBuilder {
 	#fills: NonNullable<Types.XmlNode["children"]>;
 	#fonts: NonNullable<Types.XmlNode["children"]>;
 	#numFmts: { formatCode: string; id: number }[];
+
 	/** Map of serialized style JSON to style index (xf). */
 	#styleMap = new Map<string, number>();
+
+	/** Map caches for fast de-duplication of style components. */
+	#fontMap = new Map<string, number>();
+	#fillMap = new Map<string, number>();
+	#borderMap = new Map<string, number>();
 
 	/** Merge cell ranges grouped by sheet name. */
 	#mergeCells: Map<string, Types.MergeCell[]> = new Map();
@@ -63,6 +69,11 @@ export class WorkbookBuilder {
 		this.#fonts = [Default.font()];
 		this.#numFmts = [];
 		this.#cellXfs = [Default.cellXf()];
+
+		// Seed component maps with defaults at index 0
+		this.#fontMap.set(JSON.stringify(this.#fonts[0]), 0);
+		this.#fillMap.set(JSON.stringify(this.#fills[0]), 0);
+		this.#borderMap.set(JSON.stringify(this.#borders[0]), 0);
 
 		const sheet = Utils.createSheet(defaultSheetName, {
 			addMerge: this.#addMerge.bind(this),
@@ -99,6 +110,11 @@ export class WorkbookBuilder {
 		return this.#borders;
 	}
 
+	/** Returns the border cache map (serialized xml -> index). */
+	protected get bordersMap() {
+		return this.#borderMap;
+	}
+
 	/** Returns the cellXfs (style records). */
 	protected get cellXfs() {
 		return this.#cellXfs;
@@ -109,9 +125,19 @@ export class WorkbookBuilder {
 		return this.#fills;
 	}
 
+	/** Returns the fill cache map (serialized xml -> index). */
+	protected get fillsMap() {
+		return this.#fillMap;
+	}
+
 	/** Returns the fonts collection. */
 	protected get fonts() {
 		return this.#fonts;
+	}
+
+	/** Returns the font cache map (serialized xml -> index). */
+	protected get fontsMap() {
+		return this.#fontMap;
 	}
 
 	/** Returns the number formats collection. */

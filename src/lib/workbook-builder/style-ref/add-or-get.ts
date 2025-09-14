@@ -21,23 +21,33 @@ export function addOrGet(
 ): number {
 	const { style } = payload;
 
-	// Convert each style component to XML and get their IDs
-	// Helpers.addUnique() add unique item to array and return index of item
+	// Convert each style component to XML and get their IDs using Map-backed de-duplication
+	const fontXml = Helpers.fontToXml({ existingFonts: this.fonts, font: style.font });
+	const fontKey = JSON.stringify(fontXml);
+	let fontId = this.fontsMap.get(fontKey);
+	if (fontId === undefined) {
+		fontId = this.fonts.length;
+		this.fonts.push(fontXml);
+		this.fontsMap.set(fontKey, fontId);
+	}
 
-	const fontId = Helpers.addUnique(
-		this.fonts,
-		Helpers.fontToXml({ existingFonts: this.fonts, font: style.font }),
-	);
+	const fillXml = Helpers.fillToXml({ existingFills: this.fills, fill: style.fill });
+	const fillKey = JSON.stringify(fillXml);
+	let fillId = this.fillsMap.get(fillKey);
+	if (fillId === undefined) {
+		fillId = this.fills.length;
+		this.fills.push(fillXml);
+		this.fillsMap.set(fillKey, fillId);
+	}
 
-	const fillId = Helpers.addUnique(
-		this.fills,
-		Helpers.fillToXml({ existingFills: this.fills, fill: style.fill }),
-	);
-
-	const borderId = Helpers.addUnique(
-		this.borders,
-		Helpers.borderToXml({ border: style.border, existingBorders: this.borders }),
-	);
+	const borderXml = Helpers.borderToXml({ border: style.border, existingBorders: this.borders });
+	const borderKey = JSON.stringify(borderXml);
+	let borderId = this.bordersMap.get(borderKey);
+	if (borderId === undefined) {
+		borderId = this.borders.length;
+		this.borders.push(borderXml);
+		this.bordersMap.set(borderKey, borderId);
+	}
 
 	const numFmtId = style.numberFormat
 		? Helpers.addNumFmt({ formatCode: style.numberFormat, numFmts: this.numFmts })
