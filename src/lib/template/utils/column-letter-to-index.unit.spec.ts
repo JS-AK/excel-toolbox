@@ -5,6 +5,30 @@ import { columnLetterToIndex } from "./column-letter-to-index.js";
 describe("columnLetterToIndex", () => {
 	it("возвращает корректный индекс для одиночных букв", () => {
 		expect(columnLetterToIndex("A")).toBe(1);
+		expect(columnLetterToIndex("B")).toBe(2);
+		expect(columnLetterToIndex("C")).toBe(3);
+		expect(columnLetterToIndex("D")).toBe(4);
+		expect(columnLetterToIndex("E")).toBe(5);
+		expect(columnLetterToIndex("F")).toBe(6);
+		expect(columnLetterToIndex("G")).toBe(7);
+		expect(columnLetterToIndex("H")).toBe(8);
+		expect(columnLetterToIndex("I")).toBe(9);
+		expect(columnLetterToIndex("J")).toBe(10);
+		expect(columnLetterToIndex("K")).toBe(11);
+		expect(columnLetterToIndex("L")).toBe(12);
+		expect(columnLetterToIndex("M")).toBe(13);
+		expect(columnLetterToIndex("N")).toBe(14);
+		expect(columnLetterToIndex("O")).toBe(15);
+		expect(columnLetterToIndex("P")).toBe(16);
+		expect(columnLetterToIndex("Q")).toBe(17);
+		expect(columnLetterToIndex("R")).toBe(18);
+		expect(columnLetterToIndex("S")).toBe(19);
+		expect(columnLetterToIndex("T")).toBe(20);
+		expect(columnLetterToIndex("U")).toBe(21);
+		expect(columnLetterToIndex("V")).toBe(22);
+		expect(columnLetterToIndex("W")).toBe(23);
+		expect(columnLetterToIndex("X")).toBe(24);
+		expect(columnLetterToIndex("Y")).toBe(25);
 		expect(columnLetterToIndex("Z")).toBe(26);
 	});
 

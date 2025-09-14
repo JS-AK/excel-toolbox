@@ -1,4 +1,7 @@
+import { Writable } from "node:stream";
 import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 import * as Utils from "./utils/index.js";
 import * as Zip from "../zip/index.js";
@@ -369,5 +372,97 @@ export class WorkbookBuilder {
 		const zipBuffer = await Zip.create(this.#files);
 
 		await fs.writeFile(path, zipBuffer);
+	}
+
+	/**
+	 * Saves the workbook to a writable stream using temporary files.
+	 * This method creates temporary files from the in-memory data and streams them
+	 * to the output stream, avoiding loading the entire file into memory.
+	 *
+	 * @param output - The writable stream to write the Excel file to
+	 *
+	 * @returns Promise that resolves when the file is written
+	 */
+	async saveToStream(output: Writable, dest?: string): Promise<void> {
+		if (dest) {
+			await fs.rm(dest, { force: true, recursive: true });
+		}
+
+		const destination = dest ?? path.join(os.tmpdir(), "excel-toolbox-");
+
+		// Create temporary directory
+		const tempDir = dest ? destination : await fs.mkdtemp(destination);
+
+		let index = 0;
+
+		const usedFileKeys: string[] = [];
+
+		// Write "xl/worksheets/sheet*.xml"
+		for (const sheet of this.#sheets.values()) {
+			const merges = this.#mergeCells.get(sheet.name) || [];
+			// const preparedMerges = merges.map(
+			// 	merge => `${columnIndexToLetter(merge.startCol)}${merge.startRow}:${columnIndexToLetter(merge.endCol)}${merge.endRow}`,
+			// );
+
+			// const xml = Utils.buildWorksheetXml(sheet.rows, preparedMerges);
+
+			const filePath = `xl/worksheets/sheet${++index}.xml`;
+			usedFileKeys.push(filePath);
+
+			const fullPath = path.join(destination, ...filePath.split("/"));
+
+			await Utils.writeWorksheetXml(fullPath, sheet.rows, merges);
+
+			this.#addFile(filePath, "");
+		}
+
+		// Write "xl/sharedStrings.xml"
+		if (this.#sharedStrings.length) {
+			usedFileKeys.push(FILE_PATHS.SHARED_STRINGS);
+
+			const fullPath = path.join(destination, ...FILE_PATHS.SHARED_STRINGS.split("/"));
+
+			await Utils.writeSharedStringsXml(fullPath, this.#sharedStrings);
+		}
+
+		// Write "xl/styles.xml"
+		{
+			usedFileKeys.push(FILE_PATHS.STYLES);
+
+			const fullPath = path.join(destination, ...FILE_PATHS.STYLES.split("/"));
+
+			await Utils.writeStylesXml(fullPath, {
+				borders: this.#borders,
+				cellXfs: this.#cellXfs,
+				fills: this.#fills,
+				fonts: this.#fonts,
+				numFmts: this.#numFmts,
+			});
+		}
+
+		try {
+			// Write all files from memory to temporary files
+			const fileKeys: string[] = [];
+
+			for (const [key, value] of Object.entries(this.#files)) {
+				if (usedFileKeys.includes(key)) {
+					fileKeys.push(key);
+
+					continue;
+				}
+
+				const fullPath = path.join(tempDir, ...key.split("/"));
+
+				await fs.mkdir(path.dirname(fullPath), { recursive: true });
+				await fs.writeFile(fullPath, value);
+				fileKeys.push(key);
+			}
+
+			// Create ZIP archive and stream to output
+			await Zip.createWithStream(fileKeys, tempDir, output);
+		} finally {
+			// Clean up temporary files
+			await fs.rm(tempDir, { force: true, recursive: true });
+		}
 	}
 }

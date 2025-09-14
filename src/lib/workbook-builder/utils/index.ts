@@ -12,3 +12,7 @@ export * from "./constants.js";
 export * from "./date-to-excel-serial.js";
 export * from "./initialize-files.js";
 export * from "./sheet.js";
+export * from "./write-shared-strings-xml.js";
+export * from "./write-styles-xml.js";
+export * from "./write-worksheet-xml.js";
+export * from "./write-xml.js";

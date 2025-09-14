@@ -6,6 +6,29 @@ describe("columnIndexToLetter", () => {
 	it("should convert single-letter columns (A-Z)", () => {
 		expect(columnIndexToLetter(0)).toBe("A");
 		expect(columnIndexToLetter(1)).toBe("B");
+		expect(columnIndexToLetter(2)).toBe("C");
+		expect(columnIndexToLetter(3)).toBe("D");
+		expect(columnIndexToLetter(4)).toBe("E");
+		expect(columnIndexToLetter(5)).toBe("F");
+		expect(columnIndexToLetter(6)).toBe("G");
+		expect(columnIndexToLetter(7)).toBe("H");
+		expect(columnIndexToLetter(8)).toBe("I");
+		expect(columnIndexToLetter(9)).toBe("J");
+		expect(columnIndexToLetter(10)).toBe("K");
+		expect(columnIndexToLetter(11)).toBe("L");
+		expect(columnIndexToLetter(12)).toBe("M");
+		expect(columnIndexToLetter(13)).toBe("N");
+		expect(columnIndexToLetter(14)).toBe("O");
+		expect(columnIndexToLetter(15)).toBe("P");
+		expect(columnIndexToLetter(16)).toBe("Q");
+		expect(columnIndexToLetter(17)).toBe("R");
+		expect(columnIndexToLetter(18)).toBe("S");
+		expect(columnIndexToLetter(19)).toBe("T");
+		expect(columnIndexToLetter(20)).toBe("U");
+		expect(columnIndexToLetter(21)).toBe("V");
+		expect(columnIndexToLetter(22)).toBe("W");
+		expect(columnIndexToLetter(23)).toBe("X");
+		expect(columnIndexToLetter(24)).toBe("Y");
 		expect(columnIndexToLetter(25)).toBe("Z");
 	});
 
