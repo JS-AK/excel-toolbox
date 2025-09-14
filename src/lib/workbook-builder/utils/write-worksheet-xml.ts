@@ -3,9 +3,10 @@ import fsPromises from "node:fs/promises";
 import path from "node:path";
 import readline from "node:readline";
 
-import { RowData, SheetData } from "./sheet.js";
 import { XML_DECLARATION, XML_NAMESPACES } from "./constants.js";
-import { MergeCell } from "../merge-cells/types.js";
+
+import { MergeCell, RowData, SheetData } from "../types/index.js";
+
 import { columnIndexToLetter } from "../../template/utils/column-index-to-letter.js";
 import { columnLetterToIndex } from "../../template/utils/column-letter-to-index.js";
 

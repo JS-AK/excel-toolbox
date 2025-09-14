@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { trimAndJoinMultiline } from "../../utils/trim-and-join-multiline.js";
 
-import { CellData, RowData } from "./sheet.js";
+import { CellData, RowData } from "../types/index.js";
+
 import { buildWorksheetXml } from "./build-worksheet-xml.js";
 
 describe("buildWorksheetXml", () => {

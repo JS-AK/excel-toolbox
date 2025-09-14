@@ -1,7 +1,8 @@
-import { RowData, SheetData } from "./sheet.js";
+import { RowData, SheetData, XmlNode } from "../types/index.js";
+
 import { XML_DECLARATION, XML_NAMESPACES } from "./constants.js";
-import { XmlNode, buildXml } from "./build-xml.js";
 import { buildCellChildren } from "./build-cell-children.js";
+import { buildXml } from "./build-xml.js";
 
 export function buildWorksheetXml(
 	rows: SheetData["rows"] = new Map<number, RowData>(),

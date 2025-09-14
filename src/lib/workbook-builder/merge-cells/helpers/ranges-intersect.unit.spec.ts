@@ -1,7 +1,7 @@
 /* eslint-disable sort-keys */
 import { describe, expect, it } from "vitest";
 
-import type { MergeCell } from "../types.js";
+import { MergeCell } from "../../types/index.js";
 
 import { rangesIntersect } from "./ranges-intersect.js";
 

@@ -1,3 +1,5 @@
+import { XmlNode } from "../types/index.js";
+
 /**
  * Creates a default font XML node with Calibri font.
  *
@@ -12,4 +14,4 @@ export const font = () => ({
 		{ attrs: { val: "minor" }, tag: "scheme" },
 	],
 	tag: "font",
-});
+}) satisfies XmlNode;

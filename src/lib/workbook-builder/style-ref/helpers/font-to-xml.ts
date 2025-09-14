@@ -1,6 +1,20 @@
 import * as Default from "../../default/index.js";
-import { CellStyle, XmlNode } from "../../utils/index.js";
 
+import type { CellStyle, XmlNode } from "../../types/index.js";
+
+/**
+ * Builds an XmlNode representing a <font> element based on the provided CellStyle.
+ *
+ * If no font is provided, returns the default font from the template. Color
+ * values may include a leading '#'. Six-digit RGB values are prefixed with
+ * 'FF' (alpha) to form ARGB; eight-digit values are used as-is. Throws for
+ * invalid color lengths.
+ *
+ * @param payload - Input arguments
+ * @param payload.existingFonts - Existing fonts collection (not used directly; kept for parity)
+ * @param payload.font - Optional font from the cell style
+ * @returns XmlNode representing a <font> element
+ */
 export const fontToXml = (payload: {
 	existingFonts: XmlNode["children"];
 	font?: CellStyle["font"];
@@ -11,23 +25,23 @@ export const fontToXml = (payload: {
 		throw new Error("existingFonts is empty");
 	}
 
-	// значения по умолчанию
+	// Default values
 	const defaultFont = Default.font();
 
 	if (!font) {
-		// если стиля нет — возвращаем "нулевой" шрифт (как в шаблоне Excel)
+		// If no font style provided — return default font (as in Excel template)
 		return defaultFont;
 	}
 
 	const children: XmlNode[] = [];
 
-	// размер всегда должен быть
+	// Size is always present
 	children.push({
 		attrs: { val: String(font.size ?? defaultFont.children.at(0)?.attrs.val) },
 		tag: "sz",
 	});
 
-	// цвет (если есть) иначе дефолтный
+	// Color (if provided) otherwise default
 	if (font.color) {
 		const colorVal = font.color.startsWith("#") ? font.color.slice(1) : font.color;
 		if (colorVal.length === 6) {
@@ -41,19 +55,19 @@ export const fontToXml = (payload: {
 				tag: "color",
 			});
 		} else {
-			throw new Error(`Некорректный цвет: ${font.color}`);
+			throw new Error(`Invalid font color: ${font.color}`);
 		}
 	} else {
 		children.push(defaultFont.children.at(1) as XmlNode);
 	}
 
-	// имя шрифта (обязателен)
+	// Font name (required)
 	children.push({
 		attrs: { val: font.name ?? defaultFont.children.at(2)?.attrs.val },
 		tag: "name",
 	});
 
-	// доп. атрибуты
+	// Additional attributes
 	if (font.bold) children.push({ tag: "b" });
 	if (font.italic) children.push({ tag: "i" });
 	if (font.underline) {

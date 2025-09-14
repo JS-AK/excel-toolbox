@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { CellStyle } from "../types/index.js";
+
 import { WorkbookBuilder } from "../workbook-builder.js";
 import { addOrGet } from "./add-or-get.js";
-
-import { CellStyle } from "../utils/sheet.js";
 
 describe("addOrGet()", () => {
 	let wb: WorkbookBuilder;

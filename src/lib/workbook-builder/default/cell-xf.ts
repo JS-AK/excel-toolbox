@@ -1,9 +1,4 @@
-export type CellXf = {
-	borderId: number;
-	fillId: number;
-	fontId: number;
-	numFmtId: number;
-};
+import { CellXf } from "../types/index.js";
 
 /**
  * Creates a default cell formatting object.

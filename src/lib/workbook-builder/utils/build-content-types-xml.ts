@@ -1,5 +1,7 @@
+import { XmlNode } from "../types/index.js";
+
 import { CONTENT_TYPES, XML_DECLARATION, XML_NAMESPACES } from "./constants.js";
-import { XmlNode, buildXml } from "./build-xml.js";
+import { buildXml } from "./build-xml.js";
 
 export function buildContentTypesXml(sheetsCount: number): string {
 	const defaults: XmlNode[] = [

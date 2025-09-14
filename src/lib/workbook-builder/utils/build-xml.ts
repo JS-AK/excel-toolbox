@@ -1,21 +1,11 @@
-/**
- * Represents an XML node structure for building XML documents.
- */
-export type XmlNode = {
-	/** The XML tag name */
-	tag: string;
-	/** Optional attributes for the XML element */
-	attrs?: Record<string, string | number | undefined | null>;
-	/** Child elements or text content */
-	children?: (string | XmlNode)[];
-};
+import { XmlNode } from "../types/index.js";
 
 /**
  * Builds XML string from an XmlNode structure.
  *
  * @param node - The XML node to convert to string
  * @param level - The indentation level for formatting (default: 0)
- * 
+ *
  * @returns The formatted XML string
  */
 export function buildXml(node: XmlNode, level = 0): string {

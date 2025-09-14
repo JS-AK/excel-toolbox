@@ -3,32 +3,16 @@ import fsPromises from "node:fs/promises";
 import path from "node:path";
 
 import * as Default from "../default/index.js";
+import { CellXf, XmlNode } from "../types/index.js";
+
 import { XML_DECLARATION, XML_NAMESPACES } from "./constants.js";
-import { XmlNode } from "./build-xml.js";
 import { writeXml } from "./write-xml.js";
-
-type Alignment = {
-	horizontal?: "left" | "center" | "right" | "justify";
-	vertical?: "top" | "center" | "bottom";
-	wrapText?: boolean;
-	indent?: number;
-};
-
-type CellXf = {
-	numFmtId: number;
-	borderId: number;
-	fillId: number;
-	fontId: number;
-	alignment?: Alignment;
-};
-
-type CellXfs = CellXf[];
 
 export async function writeStylesXml(
 	destination: string,
 	data?: {
 		borders: XmlNode["children"];
-		cellXfs: CellXfs;
+		cellXfs: CellXf[];
 		fills: XmlNode["children"];
 		fonts: XmlNode["children"];
 		numFmts: { formatCode: string; id: number }[];

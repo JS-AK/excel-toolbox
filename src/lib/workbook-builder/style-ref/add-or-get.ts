@@ -1,4 +1,5 @@
-import type { CellStyle } from "../utils/sheet.js";
+import type { CellStyle } from "../types/index.js";
+
 import type { WorkbookBuilder } from "../workbook-builder.js";
 
 import * as Helpers from "./helpers/index.js";

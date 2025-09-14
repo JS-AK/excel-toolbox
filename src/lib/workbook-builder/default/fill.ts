@@ -1,4 +1,4 @@
-import type { XmlNode } from "../utils/build-xml.js";
+import { XmlNode } from "../types/index.js";
 
 /**
  * Creates a basic fill XML node with no pattern.

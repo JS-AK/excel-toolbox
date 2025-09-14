@@ -1,15 +1,7 @@
-import { XML_DECLARATION, XML_NAMESPACES } from "./constants.js";
-import { XmlNode, buildXml } from "./build-xml.js";
+import { AppXmlOptions, XmlNode } from "../types/index.js";
 
-export interface AppXmlOptions {
-	appVersion?: string;
-	application?: string;
-	company?: string;
-	hyperlinksChanged?: boolean;
-	linksUpToDate?: boolean;
-	sharedDoc?: boolean;
-	sheetNames?: string[];
-}
+import { XML_DECLARATION, XML_NAMESPACES } from "./constants.js";
+import { buildXml } from "./build-xml.js";
 
 export function buildAppXml({
 	appVersion = "16.0300",

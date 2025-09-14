@@ -1,5 +1,17 @@
-import { CellStyle, XmlNode } from "../../utils/index.js";
+import type { CellStyle, XmlNode } from "../../types/index.js";
 
+/**
+ * Builds an XmlNode representing a <fill> element based on the provided CellStyle.
+ *
+ * If no fill is provided, the first existing fill is returned (assumed default).
+ * Foreground/background colors may include a leading '#', which is removed to
+ * match Excel's expected RGB format.
+ *
+ * @param payload - Input arguments
+ * @param payload.existingFills - Existing fills collection to fall back to
+ * @param payload.fill - Optional fill from the cell style
+ * @returns XmlNode representing a <fill> element
+ */
 export const fillToXml = (payload: {
 	existingFills: XmlNode["children"];
 	fill?: CellStyle["fill"];
@@ -33,7 +45,7 @@ export const fillToXml = (payload: {
 			tag: "bgColor",
 		});
 	}
-	
+
 	children.push({
 		attrs,
 		children: fillChildren,

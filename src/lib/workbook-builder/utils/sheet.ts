@@ -1,90 +1,24 @@
 import { columnIndexToLetter, columnLetterToIndex } from "../../template/utils/index.js";
 
-import { MergeCell } from "../merge-cells/types.js";
+import type { CellStyle, CellType, CellValue, MergeCell, RowData, SheetData } from "../types/index.js";
+
 import { dateToExcelSerial } from "./date-to-excel-serial.js";
 
+/** Maximum number of columns supported by Excel (XFD). */
 const MAX_COLUMNS = 16384;
+/** Maximum number of rows supported by Excel (1,048,576). */
 const MAX_ROWS = 1_048_576;
 
-// Тип ячейки (Cell)
-export interface CellData {
-	value: CellValue;
-
-	isFormula?: boolean;
-
-	type?: CellType;
-
-	style?: CellStyle;
-}
-
-export type CellStyle = {
-	index?: number;
-	font?: {
-		name?: string;           // Название шрифта, например "Calibri"
-		size?: number;           // Размер шрифта, например 11, 14
-		bold?: boolean;          // Жирный
-		italic?: boolean;        // Курсив
-		underline?: boolean | "single" | "double"; // Подчеркивание
-		color?: string;          // Цвет текста в формате HEX, например "#FF0000"
-	};
-	fill?: {
-		type?: "pattern";        // Пока поддерживаем patternFill
-		patternType?: string;    // Например "solid", "gray125", "none"
-		fgColor?: string;        // Цвет переднего плана (заливка) — HEX или ARGB
-		bgColor?: string;        // Цвет фона (редко используется)
-	};
-	border?: {
-		top?: BorderStyle;
-		bottom?: BorderStyle;
-		left?: BorderStyle;
-		right?: BorderStyle;
-	};
-	alignment?: {
-		horizontal?: "left" | "center" | "right" | "justify";
-		vertical?: "top" | "center" | "bottom";
-		wrapText?: boolean;
-		indent?: number;
-	};
-	numberFormat?: string;     // Формат числа, например "0.00", "dd/mm/yyyy", "$#,##0.00"
-};
-
-export type CellType = "s" | "inlineStr" | "n" | "b" | "str" | "e";
-
-/*
-	s              - Shared string (ссылка на sharedStrings.xml)	<v> содержит индекс строки в sharedStrings
-	inlineStr      - Inline string	Вложенный элемент <is><t>текст</t></is>
-	str            - Formula string result (формула)	Не для обычных текстов, а для результата формулы
-	b              - Boolean	<v> — 0 или 1
-	e              - Ошибка	<v> — код ошибки
-	n              - Number (число)	Нет атрибута t или t="n"
-*/
-
-type CellValue = string | number | boolean | Date | null | undefined;
-
-type BorderStyle = {
-	style: "thin" | "medium" | "thick" | "dashed" | "dotted" | "double" | "hair" | "mediumDashed" | "dashDot" | "mediumDashDot" | "dashDotDot" | "mediumDashDotDot" | "slantDashDot";
-	color?: string;            // Цвет бордера (HEX или ARGB)
-};
-
-// Тип строки (Row)
-export interface RowData {
-	cells: Map<string, CellData>; // ключ — например, "A1", "B1"
-}
-
-// Тип листа (Sheet)
-export interface SheetData {
-	name: string;
-	rows: Map<number, RowData>;
-
-	// Методы для удобной работы
-	addMerge(mergeCell: MergeCell): MergeCell;
-	removeMerge(mergeCell: MergeCell): boolean;
-	setCell(rowIndex: number, column: string | number, cell: CellData): void;
-	getCell(rowIndex: number, column: string | number): CellData | undefined;
-	removeCell(rowIndex: number, column: string | number): boolean;
-}
-
-// Фабрика для создания пустого листа
+/**
+ * Factory for creating a new sheet with bound helpers.
+ *
+ * @param name - Sheet name
+ * @param fn.addMerge - Function to add a merge range (bound to workbook)
+ * @param fn.removeMerge - Function to remove a merge range (bound to workbook)
+ * @param fn.addOrGetStyle - Function to add or get a style index
+ * @param fn.addSharedString - Function to add a shared string and return its index
+ * @returns SheetData instance with helpers
+ */
 export function createSheet(
 	name: string,
 	fn: {
@@ -151,11 +85,11 @@ export function createSheet(
 					throw new Error(`Cell type: "${cell.type}" valid only for formula cells`);
 				}
 
-				// Если не указан type — определить сам
+				// If type is not provided — detect automatically
 				cell.type = detectCellType(cell.value, cell.type);
 			}
 
-			// Обработка shared string
+			// Handle shared string
 			if (cell.type === "s") {
 				const idx = addSharedString(String(cell.value ?? ""), name);
 
@@ -213,6 +147,7 @@ export function createSheet(
 	};
 }
 
+/** Validates an Excel column string (A-Z, AA, ..., XFD). */
 function isValidColumn(column: string): boolean {
 	if (!/^[A-Z]+$/.test(column)) return false;
 
@@ -221,13 +156,20 @@ function isValidColumn(column: string): boolean {
 	return idx > 0 && idx <= MAX_COLUMNS;
 }
 
+/**
+ * Detects the appropriate cell type based on the value when not explicitly specified.
+ *
+ * @param value - Cell value
+ * @param explicitType - Explicitly provided type, if any
+ * @returns CellType inferred or the explicit type
+ */
 function detectCellType(value: CellValue, explicitType?: CellType): CellType {
 	if (explicitType) {
 		return explicitType;
 	}
 
 	if (value === null || value === undefined) {
-		// Для пустых ячеек можно считать числовым типом с пустым значением
+		// For empty cells we default to numeric type with empty value
 		return "n";
 	}
 
@@ -240,10 +182,10 @@ function detectCellType(value: CellValue, explicitType?: CellType): CellType {
 	}
 
 	if (typeof value === "string") {
-		// По умолчанию — считаем inlineStr
+		// Default to inlineStr for plain strings
 		return "inlineStr";
 	}
 
-	// На всякий случай fallback
+	// Fallback to inlineStr
 	return "inlineStr";
 }

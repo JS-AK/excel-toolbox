@@ -1,4 +1,4 @@
-import type { MergeCell } from "../types.js";
+import { MergeCell } from "../../types/index.js";
 
 /**
  * Compares two merge cell ranges for equality.

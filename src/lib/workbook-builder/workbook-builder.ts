@@ -4,16 +4,17 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import * as Utils from "./utils/index.js";
 import * as Zip from "../zip/index.js";
-import { updateDimension } from "../template/utils/update-dimension.js";
+import { columnIndexToLetter, updateDimension } from "../template/utils/index.js";
+
+import * as Utils from "./utils/index.js";
+
+import * as Types from "./types/index.js";
 
 import * as Default from "./default/index.js";
 import * as MergeCells from "./merge-cells/index.js";
 import * as SharedStringRef from "./shared-string-ref/index.js";
 import * as StyleRef from "./style-ref/index.js";
-import { FILE_PATHS } from "./utils/constants.js";
-import { columnIndexToLetter } from "../template/utils/column-index-to-letter.js";
 
 /**
  * Builds Excel workbooks by composing sheets, styles, shared strings and merges,
@@ -26,7 +27,7 @@ export class WorkbookBuilder {
 	#files: Utils.ExcelFiles;
 
 	/** Collection of sheets keyed by sheet name. */
-	#sheets: Map<string, Utils.SheetData> = new Map();
+	#sheets: Map<string, Types.SheetData> = new Map();
 
 	/** Shared strings storage used by cells of type "s". */
 	#sharedStrings: string[] = [];
@@ -34,16 +35,16 @@ export class WorkbookBuilder {
 	#sharedStringMap: Map<string, number> = new Map();
 
 	/** Workbook style collections. */
-	#borders: NonNullable<Utils.XmlNode["children"]>;
-	#cellXfs: Utils.CellXfs;
-	#fills: NonNullable<Utils.XmlNode["children"]>;
-	#fonts: NonNullable<Utils.XmlNode["children"]>;
+	#borders: NonNullable<Types.XmlNode["children"]>;
+	#cellXfs: Types.CellXf[];
+	#fills: NonNullable<Types.XmlNode["children"]>;
+	#fonts: NonNullable<Types.XmlNode["children"]>;
 	#numFmts: { formatCode: string; id: number }[];
 	/** Map of serialized style JSON to style index (xf). */
 	#styleMap = new Map<string, number>();
 
 	/** Merge cell ranges grouped by sheet name. */
-	#mergeCells: Map<string, MergeCells.MergeCell[]> = new Map();
+	#mergeCells: Map<string, Types.MergeCell[]> = new Map();
 
 	/**
 	 * Creates a new workbook with a default sheet and initial style collections.
@@ -140,7 +141,7 @@ export class WorkbookBuilder {
 	/** Style refs */
 
 	/** Adds a style or returns an existing style index. */
-	#addOrGetStyle(style: Utils.CellStyle) {
+	#addOrGetStyle(style: Types.CellStyle) {
 		return StyleRef.addOrGet.bind(this)({ style });
 	};
 
@@ -149,12 +150,12 @@ export class WorkbookBuilder {
 	/** Merge cells */
 
 	/** Adds a merge range to a sheet. */
-	#addMerge(payload: MergeCells.MergeCell & { sheetName: string }) {
+	#addMerge(payload: Types.MergeCell & { sheetName: string }) {
 		return MergeCells.add.bind(this)(payload);
 	}
 
 	/** Removes a merge range from a sheet. */
-	#removeMerge(payload: MergeCells.MergeCell & { sheetName: string }) {
+	#removeMerge(payload: Types.MergeCell & { sheetName: string }) {
 		return MergeCells.remove.bind(this)(payload);
 	}
 
@@ -173,7 +174,7 @@ export class WorkbookBuilder {
 	/** Updates the docProps/app.xml content based on current sheet names. */
 	#updateAppXml() {
 		this.#addFile(
-			FILE_PATHS.APP,
+			Utils.FILE_PATHS.APP,
 			Utils.buildAppXml({ sheetNames: Array.from(this.#sheets.keys()) }),
 		);
 	}
@@ -181,7 +182,7 @@ export class WorkbookBuilder {
 	/** Updates the xl/workbook.xml content based on current sheets. */
 	#updateWorkbookXml() {
 		this.#addFile(
-			FILE_PATHS.WORKBOOK,
+			Utils.FILE_PATHS.WORKBOOK,
 			Utils.buildWorkbookXml(Array.from(this.#sheets.values())),
 		);
 	}
@@ -189,7 +190,7 @@ export class WorkbookBuilder {
 	/** Updates the xl/_rels/workbook.xml.rels relationships for sheets. */
 	#updateWorkbookRels() {
 		this.#addFile(
-			FILE_PATHS.WORKBOOK_RELS,
+			Utils.FILE_PATHS.WORKBOOK_RELS,
 			Utils.buildWorkbookRels(this.#sheets.size),
 		);
 	}
@@ -197,7 +198,7 @@ export class WorkbookBuilder {
 	/** Updates [Content_Types].xml with sheet overrides. */
 	#updateContentTypes() {
 		this.#addFile(
-			FILE_PATHS.CONTENT_TYPES,
+			Utils.FILE_PATHS.CONTENT_TYPES,
 			Utils.buildContentTypesXml(this.#sheets.size),
 		);
 	}
@@ -211,7 +212,7 @@ export class WorkbookBuilder {
 	 * @param sheetName - Sheet name to add
 	 * @returns The created sheet data
 	 */
-	addSheet(sheetName: string): Utils.SheetData {
+	addSheet(sheetName: string): Types.SheetData {
 		if (this.getSheet(sheetName)) {
 			throw new Error("Sheet with this name already exists");
 		}
@@ -241,7 +242,7 @@ export class WorkbookBuilder {
 	}
 
 	/** Returns a sheet by name if it exists. */
-	getSheet(sheetName: string): Utils.SheetData | undefined {
+	getSheet(sheetName: string): Types.SheetData | undefined {
 		return this.#sheets.get(sheetName);
 	}
 
@@ -278,7 +279,7 @@ export class WorkbookBuilder {
 	 * The returned structure is deeply frozen to avoid accidental mutations.
 	 */
 	getInfo(): {
-		mergeCells: Map<string, MergeCells.MergeCell[]>;
+		mergeCells: Map<string, Types.MergeCell[]>;
 
 		sheetsNames: string[];
 
@@ -286,10 +287,10 @@ export class WorkbookBuilder {
 		sharedStrings: string[];
 
 		styles: {
-			borders: NonNullable<Utils.XmlNode["children"]>;
-			cellXfs: Utils.CellXfs;
-			fills: NonNullable<Utils.XmlNode["children"]>;
-			fonts: NonNullable<Utils.XmlNode["children"]>;
+			borders: NonNullable<Types.XmlNode["children"]>;
+			cellXfs: Types.CellXf[];
+			fills: NonNullable<Types.XmlNode["children"]>;
+			fonts: NonNullable<Types.XmlNode["children"]>;
 			numFmts: { formatCode: string; id: number }[];
 			styleMap: Map<string, number>;
 		};
@@ -370,11 +371,11 @@ export class WorkbookBuilder {
 		if (this.#sharedStrings.length) {
 			const xml = Utils.buildSharedStringsXml(this.#sharedStrings);
 
-			this.#addFile(FILE_PATHS.SHARED_STRINGS, xml);
+			this.#addFile(Utils.FILE_PATHS.SHARED_STRINGS, xml);
 		}
 
 		// Styles
-		this.#addFile(FILE_PATHS.STYLES, Utils.buildStylesXml({
+		this.#addFile(Utils.FILE_PATHS.STYLES, Utils.buildStylesXml({
 			borders: this.#borders,
 			cellXfs: this.#cellXfs,
 			fills: this.#fills,
@@ -438,18 +439,18 @@ export class WorkbookBuilder {
 
 		// Write "xl/sharedStrings.xml"
 		if (this.#sharedStrings.length) {
-			usedFileKeys.push(FILE_PATHS.SHARED_STRINGS);
+			usedFileKeys.push(Utils.FILE_PATHS.SHARED_STRINGS);
 
-			const fullPath = path.join(tempDir, ...FILE_PATHS.SHARED_STRINGS.split("/"));
+			const fullPath = path.join(tempDir, ...Utils.FILE_PATHS.SHARED_STRINGS.split("/"));
 
 			await Utils.writeSharedStringsXml(fullPath, this.#sharedStrings);
 		}
 
 		// Write "xl/styles.xml"
 		{
-			usedFileKeys.push(FILE_PATHS.STYLES);
+			usedFileKeys.push(Utils.FILE_PATHS.STYLES);
 
-			const fullPath = path.join(tempDir, ...FILE_PATHS.STYLES.split("/"));
+			const fullPath = path.join(tempDir, ...Utils.FILE_PATHS.STYLES.split("/"));
 
 			await Utils.writeStylesXml(fullPath, {
 				borders: this.#borders,

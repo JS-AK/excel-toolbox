@@ -1,7 +1,8 @@
 import type { WorkbookBuilder } from "../workbook-builder.js";
 
+import { MergeCell } from "../types/index.js";
+
 import * as Helpers from "./helpers/index.js";
-import type { MergeCell } from "./types.js";
 
 /**
  * Removes a merge cell range from the specified sheet.

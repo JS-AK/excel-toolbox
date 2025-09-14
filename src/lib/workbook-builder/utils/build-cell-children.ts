@@ -1,5 +1,4 @@
-import type { CellData } from "./sheet.js";
-import type { XmlNode } from "./build-xml.js";
+import type { CellData, XmlNode } from "../types/index.js";
 
 /**
  * Builds XML children nodes for a cell based on its type and value.

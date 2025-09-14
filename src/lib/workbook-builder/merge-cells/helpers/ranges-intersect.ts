@@ -1,4 +1,4 @@
-import type { MergeCell } from "../types.js";
+import { MergeCell } from "../../types/index.js";
 
 /**
  * Checks if two merge cell ranges intersect with each other.

@@ -1,28 +1,13 @@
 import * as Default from "../default/index.js";
 
+import { CellXf, XmlNode } from "../types/index.js";
+
 import { XML_DECLARATION, XML_NAMESPACES } from "./constants.js";
-import { XmlNode, buildXml } from "./build-xml.js";
-
-type Alignment = {
-	horizontal?: "left" | "center" | "right" | "justify";
-	vertical?: "top" | "center" | "bottom";
-	wrapText?: boolean;
-	indent?: number;
-};
-
-type CellXf = {
-	numFmtId: number;
-	borderId: number;
-	fillId: number;
-	fontId: number;
-	alignment?: Alignment;
-};
-
-export type CellXfs = CellXf[];
+import { buildXml } from "./build-xml.js";
 
 export function buildStylesXml(data?: {
 	borders: XmlNode["children"];
-	cellXfs: CellXfs;
+	cellXfs: CellXf[];
 	fills: XmlNode["children"];
 	fonts: XmlNode["children"];
 	numFmts: { formatCode: string; id: number }[];

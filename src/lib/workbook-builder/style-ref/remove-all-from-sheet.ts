@@ -1,4 +1,5 @@
-import { CellStyle } from "../utils/sheet.js";
+import { CellStyle } from "../types/index.js";
+
 import { WorkbookBuilder } from "../workbook-builder.js";
 
 import { remove } from "./remove.js";

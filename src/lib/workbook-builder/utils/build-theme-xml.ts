@@ -1,5 +1,7 @@
+import { XmlNode } from "../types/index.js";
+
 import { XML_DECLARATION, XML_NAMESPACES } from "./constants.js";
-import { XmlNode, buildXml } from "./build-xml.js";
+import { buildXml } from "./build-xml.js";
 
 export function buildThemeXml(): string {
 	const theme: XmlNode = {
