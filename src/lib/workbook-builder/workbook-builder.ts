@@ -18,6 +18,8 @@ import { columnIndexToLetter } from "../template/utils/column-index-to-letter.js
 /**
  * Builds Excel workbooks by composing sheets, styles, shared strings and merges,
  * and provides methods to save to file or stream.
+ *
+ * @experimental This API is experimental and might change in future versions.
  */
 export class WorkbookBuilder {
 	/** In-memory representation of workbook files to be zipped. */
