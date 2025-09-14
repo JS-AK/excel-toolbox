@@ -1,4 +1,4 @@
-import { Writable } from "node:stream";
+import type { Writable } from "node:stream";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -14,38 +14,49 @@ import * as StyleRef from "./style-ref/index.js";
 import { FILE_PATHS } from "./utils/constants.js";
 import { columnIndexToLetter } from "../template/utils/column-index-to-letter.js";
 
+/**
+ * Builds Excel workbooks by composing sheets, styles, shared strings and merges,
+ * and provides methods to save to file or stream.
+ */
 export class WorkbookBuilder {
-	// Нужна ли глубокая очистка
+	/** Whether to cleanup unused references while mutating the workbook. */
 	#cleanupUnused: boolean;
 
-	// Все что касается листов
+	/** In-memory representation of workbook files to be zipped. */
 	#files: Utils.ExcelFiles;
 
-	// Все что касается листов
+	/** Collection of sheets keyed by sheet name. */
 	#sheets: Map<string, Utils.SheetData> = new Map();
 
-	// Все что касается shared strings
+	/** Shared strings storage used by cells of type "s". */
 	#sharedStrings: string[] = [];
-	#sharedStringMap: Map<string, number> = new Map(); // key = строка, value = индекс в массиве
-	// #sharedStringRefs: Map<string, Set<string>> = new Map(); // key = строка, value = множество листов
+	/** Map for O(1) lookup of shared string indices (key = string, value = index). */
+	#sharedStringMap: Map<string, number> = new Map();
 
-	// Все что касается styles
+	/** Workbook style collections. */
 	#borders: NonNullable<Utils.XmlNode["children"]>;
 	#cellXfs: Utils.CellXfs;
 	#fills: NonNullable<Utils.XmlNode["children"]>;
 	#fonts: NonNullable<Utils.XmlNode["children"]>;
 	#numFmts: { formatCode: string; id: number }[];
-	#styleMap = new Map<string, number>(); // JSON -> styleIndex
+	/** Map of serialized style JSON to style index (xf). */
+	#styleMap = new Map<string, number>();
 
-	// Все что касается merge cells
+	/** Merge cell ranges grouped by sheet name. */
 	#mergeCells: Map<string, MergeCells.MergeCell[]> = new Map();
 
+	/**
+	 * Creates a new workbook with a default sheet and initial style collections.
+	 *
+	 * @param options.cleanupUnused - If true, remove unused references when deleting or modifying sheets
+	 * @param options.defaultSheetName - The name for the initial sheet
+	 */
 	constructor({ cleanupUnused = false, defaultSheetName = Default.sheetName() } = {}) {
 		this.#cleanupUnused = cleanupUnused;
 
 		this.#files = Utils.initializeFiles(Default.sheetName());
 
-		// Initial styles initialization
+		// Initialize base style collections
 		this.#borders = [Default.border()];
 		this.#fills = [Default.fill()];
 		this.#fonts = [Default.font()];
@@ -65,64 +76,74 @@ export class WorkbookBuilder {
 		this.#sheets.set(Default.sheetName(), sheet);
 	}
 
+	/** Returns the internal sheets map. */
 	protected get sheets() {
 		return this.#sheets;
 	}
 
+	/** Returns the shared strings array. */
 	protected get sharedStrings() {
 		return this.#sharedStrings;
 	}
 
+	/** Replaces the shared strings array. */
 	protected set sharedStrings(sharedStrings: string[]) {
 		this.#sharedStrings = sharedStrings;
 	}
 
+	/** Returns the shared string index map. */
 	protected get sharedStringMap() {
 		return this.#sharedStringMap;
 	}
 
-	// protected get sharedStringRefs() {
-	// 	return this.#sharedStringRefs;
-	// }
-
+	/** Returns the borders collection. */
 	protected get borders() {
 		return this.#borders;
 	}
 
+	/** Returns the cellXfs (style records). */
 	protected get cellXfs() {
 		return this.#cellXfs;
 	}
 
+	/** Returns the fills collection. */
 	protected get fills() {
 		return this.#fills;
 	}
 
+	/** Returns the fonts collection. */
 	protected get fonts() {
 		return this.#fonts;
 	}
 
+	/** Returns the number formats collection. */
 	protected get numFmts() {
 		return this.#numFmts;
 	}
 
+	/** Returns the mapping from serialized style JSON to style index. */
 	protected get styleMap() {
 		return this.#styleMap;
 	}
 
+	/** Returns the merge ranges, grouped by sheet name. */
 	protected get mergeCells() {
 		return this.#mergeCells;
 	}
 
 	/** Shared strings */
 
+	/** Adds a shared string (or returns existing index) and tracks its usage by sheet. */
 	#addSharedString(str: string, sheetName: string): number {
 		return SharedStringRef.add.bind(this)({ sheetName, str });
 	}
 
+	/** Removes a reference to a shared string from the specified sheet, if present. */
 	#removeSharedStringRef(strIdx: number, sheetName: string): boolean {
 		return SharedStringRef.remove.bind(this)({ sheetName, strIdx });
 	}
 
+	/** Removes all shared string references for a sheet (used during cleanup). */
 	#removeSheetSharedStrings(sheetName: string) {
 		return SharedStringRef.removeAllFromSheet.bind(this)({ sheetName });
 	}
@@ -131,14 +152,17 @@ export class WorkbookBuilder {
 
 	/** Style refs */
 
+	/** Adds a style or returns an existing style index. */
 	#addOrGetStyle(style: Utils.CellStyle) {
 		return StyleRef.addOrGet.bind(this)({ style });
 	};
 
+	/** Removes a style reference if no cells depend on it. */
 	#removeStyleRef(style: Utils.CellStyle): boolean {
 		return StyleRef.remove.bind(this)({ style });
 	}
 
+	/** Removes all style references for a sheet (used during cleanup). */
 	#removeSheetStyleRefs(sheetName: string): boolean {
 		return StyleRef.removeAllFromSheet.bind(this)({ sheetName });
 	}
@@ -147,24 +171,29 @@ export class WorkbookBuilder {
 
 	/** Merge cells */
 
+	/** Adds a merge range to a sheet. */
 	#addMerge(payload: MergeCells.MergeCell & { sheetName: string }) {
 		return MergeCells.add.bind(this)(payload);
 	}
 
+	/** Removes a merge range from a sheet. */
 	#removeMerge(payload: MergeCells.MergeCell & { sheetName: string }) {
 		return MergeCells.remove.bind(this)(payload);
 	}
 
+	/** Removes all merge ranges for a sheet. */
 	#removeSheetMerges(sheetName: string) {
 		this.mergeCells.delete(sheetName);
 	}
 
 	/** ----------- */
 
+	/** Adds or replaces a logical file content in the in-memory file map. */
 	#addFile(key: string, value: Utils.ExcelFileContent): void {
 		this.#files[key] = value;
 	}
 
+	/** Updates the docProps/app.xml content based on current sheet names. */
 	#updateAppXml() {
 		this.#addFile(
 			FILE_PATHS.APP,
@@ -172,6 +201,7 @@ export class WorkbookBuilder {
 		);
 	}
 
+	/** Updates the xl/workbook.xml content based on current sheets. */
 	#updateWorkbookXml() {
 		this.#addFile(
 			FILE_PATHS.WORKBOOK,
@@ -179,6 +209,7 @@ export class WorkbookBuilder {
 		);
 	}
 
+	/** Updates the xl/_rels/workbook.xml.rels relationships for sheets. */
 	#updateWorkbookRels() {
 		this.#addFile(
 			FILE_PATHS.WORKBOOK_RELS,
@@ -186,6 +217,7 @@ export class WorkbookBuilder {
 		);
 	}
 
+	/** Updates [Content_Types].xml with sheet overrides. */
 	#updateContentTypes() {
 		this.#addFile(
 			FILE_PATHS.CONTENT_TYPES,
@@ -195,6 +227,13 @@ export class WorkbookBuilder {
 
 	/** Public methods */
 
+	/**
+	 * Adds a new sheet to the workbook.
+	 *
+	 * @throws Error if a sheet with the same name already exists
+	 * @param sheetName - Sheet name to add
+	 * @returns The created sheet data
+	 */
 	addSheet(sheetName: string): Utils.SheetData {
 		if (this.getSheet(sheetName)) {
 			throw new Error("Sheet with this name already exists");
@@ -212,45 +251,53 @@ export class WorkbookBuilder {
 
 		this.#sheets.set(sheetName, sheet);
 
-		// Добавляем запись в app.xml
+		// Add entry to app.xml
 		this.#updateAppXml();
 
-		// Добавляем запись в workbook.xml
+		// Add entry to workbook.xml
 		this.#updateWorkbookXml();
 
-		// Добавляем связь в workbook.xml.rels
+		// Add relationship in workbook.xml.rels
 		this.#updateWorkbookRels();
 
-		// Добавляем Override в Content_Types.xml
+		// Add Override in [Content_Types].xml
 		this.#updateContentTypes();
 
 		return sheet;
 	}
 
+	/** Returns a sheet by name if it exists. */
 	getSheet(sheetName: string): Utils.SheetData | undefined {
 		return this.#sheets.get(sheetName);
 	}
 
+	/**
+	 * Removes a sheet by name.
+	 * If cleanup is enabled, also removes associated shared strings and styles.
+	 *
+	 * @param sheetName - Sheet name to remove
+	 * @returns True if the sheet existed and was removed
+	 */
 	removeSheet(sheetName: string): boolean {
 		const sheet = this.#sheets.get(sheetName);
 
 		if (!sheet) {
-			// Лист с таким именем не найден
+			// Sheet with this name not found
 			return false;
 		}
 
 		if (this.#cleanupUnused) {
-			// Удаляем его shared strings
+			// Remove its shared string references
 			this.#removeSheetSharedStrings(sheetName);
 
-			// Удаляем его style refs
+			// Remove its style references
 			this.#removeSheetStyleRefs(sheetName);
 		}
 
-		// Удаляем его merges
+		// Remove its merges
 		this.#removeSheetMerges(sheetName);
 
-		// Удаляем из коллекции
+		// Remove from collection
 		this.#sheets.delete(sheetName);
 
 		this.#updateAppXml();
@@ -261,13 +308,16 @@ export class WorkbookBuilder {
 		return true;
 	}
 
+	/**
+	 * Returns a snapshot of the workbook internals for inspection and tests.
+	 * The returned structure is deeply frozen to avoid accidental mutations.
+	 */
 	getInfo(): {
 		mergeCells: Map<string, MergeCells.MergeCell[]>;
 
 		sheetsNames: string[];
 
 		sharedStringMap: Map<string, number>;
-		// sharedStringRefs: Map<string, Set<string>>;
 		sharedStrings: string[];
 
 		styles: {
@@ -305,7 +355,7 @@ export class WorkbookBuilder {
 				return Object.freeze(frozenSet) as T;
 			}
 
-			// XmlNode или произвольный объект
+			// XmlNode or generic object
 			const frozenObj: Record<string, unknown> = {};
 			for (const [k, v] of Object.entries(obj)) {
 				frozenObj[k] = deepFreeze(v);
@@ -319,13 +369,6 @@ export class WorkbookBuilder {
 			sheetsNames: Array.from(this.#sheets.values()).map((sheet) => sheet.name),
 
 			sharedStringMap: new Map(this.#sharedStringMap),
-			// sharedStringRefs: (() => {
-			// 	const immutableMap = new Map<string, Set<string>>();
-			// 	for (const [key, value] of this.#sharedStringRefs) {
-			// 		immutableMap.set(key, new Set(value));
-			// 	}
-			// 	return immutableMap;
-			// })(),
 			sharedStrings: [...this.#sharedStrings],
 
 			styles: {
@@ -339,7 +382,12 @@ export class WorkbookBuilder {
 		});
 	}
 
-	async saveToFile(path: string) {
+	/**
+	 * Generates workbook XML parts in-memory and writes a .xlsx zip to disk.
+	 *
+	 * @param path - Absolute or relative file path to write
+	 */
+	async saveToFile(path: string): Promise<void> {
 		let index = 0;
 
 		for (const sheet of this.#sheets.values()) {
@@ -379,9 +427,9 @@ export class WorkbookBuilder {
 	 * This method creates temporary files from the in-memory data and streams them
 	 * to the output stream, avoiding loading the entire file into memory.
 	 *
-	 * @param output - The writable stream to write the Excel file to
-	 *
-	 * @returns Promise that resolves when the file is written
+	 * @param output - Writable stream to receive the Excel file
+	 * @param dest - Optional existing directory to use instead of a system temp directory
+	 * @returns Promise that resolves when the file has been fully written
 	 */
 	async saveToStream(output: Writable, dest?: string): Promise<void> {
 		if (dest) {
