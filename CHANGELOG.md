@@ -1,3 +1,33 @@
+# [1.9.0](https://github.com/JS-AK/excel-toolbox/compare/v1.8.3...v1.9.0) (2025-09-14)
+
+
+### Bug Fixes
+
+* updated vitest config ([84ad2ee](https://github.com/JS-AK/excel-toolbox/commit/84ad2ee3c6c9bdcf3c0eb25eac77ef1ab8f59428))
+
+
+### Features
+
+* added tests for utils ([809f640](https://github.com/JS-AK/excel-toolbox/commit/809f6402549d5f309c5ccc7b6db20c0a04376285))
+* added wb builder ([1f4a656](https://github.com/JS-AK/excel-toolbox/commit/1f4a6563cc55547f8e55ee5c0781a8b051ee559e))
+* updated wb builder ([b053691](https://github.com/JS-AK/excel-toolbox/commit/b053691a7d65e5d2d99a58d773d0174120417760))
+* updated wb builder ([7b9d0b4](https://github.com/JS-AK/excel-toolbox/commit/7b9d0b4fdfccd9e1dc7afccd5204114f44008009))
+* updated wb builder ([7615d54](https://github.com/JS-AK/excel-toolbox/commit/7615d5423b920133748f9126cab09809d5c83d47))
+* updated wb builder ([ce97c65](https://github.com/JS-AK/excel-toolbox/commit/ce97c65f45cc0a75856217fb4c3eb3e82743a6e3))
+* updated wb builder added merge cells ([ef8a12c](https://github.com/JS-AK/excel-toolbox/commit/ef8a12c30a7692a9588fbdeebd4d94793ba1e59a))
+* updated workbook-builder ([d9fd77e](https://github.com/JS-AK/excel-toolbox/commit/d9fd77e5915313e5df5e55fb04e5012a202b8e12))
+* updated workbook-builder ([ba7c1df](https://github.com/JS-AK/excel-toolbox/commit/ba7c1dfec295982e86382effc99264cb3711ad04))
+* updated workbook-builder ([1f3a8d6](https://github.com/JS-AK/excel-toolbox/commit/1f3a8d6dc7bfebee88fe298b8c8a58b940864e03))
+* updated workbook-builder ([2f572f6](https://github.com/JS-AK/excel-toolbox/commit/2f572f6cf7d430f600aa47957f276d69194dcd89))
+* updated workbook-builder ([51e8aad](https://github.com/JS-AK/excel-toolbox/commit/51e8aadd3c0374c2b9a9ce95d6da05f0bc75d5c8))
+* updated workbook-builder ([929d5af](https://github.com/JS-AK/excel-toolbox/commit/929d5af66ce66d7c12ad7a0daddc5dd32085e9f4))
+* updated workbook-builder ([0e63c7a](https://github.com/JS-AK/excel-toolbox/commit/0e63c7a545c5f83593fb707852a4065d68f6291b))
+* updated workbook-builder ([5836c65](https://github.com/JS-AK/excel-toolbox/commit/5836c65f4e535d6af3fd71b5e2d10aee836d9a98))
+* updated workbook-builder ([e3edf53](https://github.com/JS-AK/excel-toolbox/commit/e3edf53501ad05616d6bde4645094d37ee142150))
+* updated workbook-builder ([46c70fd](https://github.com/JS-AK/excel-toolbox/commit/46c70fd923edce452f397fb72d095ccca0899001))
+* updated workbook-builder ([a913faf](https://github.com/JS-AK/excel-toolbox/commit/a913faf3be1efc273319f8b9ab2e05126f2e8b57))
+* updated workbook-builder tests ([05ca05c](https://github.com/JS-AK/excel-toolbox/commit/05ca05c2c0d7a075588e8d4127ec3153afac07e0))
+
 ## [1.8.3](https://github.com/JS-AK/excel-toolbox/compare/v1.8.2...v1.8.3) (2025-08-09)
 
 
