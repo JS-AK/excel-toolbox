@@ -6,7 +6,7 @@ describe("Shared String Ref Integration Tests", () => {
 	let wb: WorkbookBuilder;
 
 	beforeEach(async () => {
-		wb = new WorkbookBuilder({ cleanupUnused: true });
+		wb = new WorkbookBuilder();
 		wb.addSheet("Sheet2");
 	});
 

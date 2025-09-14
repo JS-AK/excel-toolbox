@@ -20,7 +20,7 @@ export function remove(
 	const { endCol, endRow, sheetName, startCol, startRow } = payload;
 
 	if (!this.getSheet(sheetName)) {
-		throw new Error("Sheet not found");
+		throw new Error("Sheet not found: " + sheetName);
 	}
 
 	const merges = this.mergeCells.get(sheetName) ?? [];
@@ -28,7 +28,7 @@ export function remove(
 	const i = merges.findIndex(m => Helpers.rangesEqual(m, { endCol, endRow, startCol, startRow }));
 
 	if (i === -1) {
-		throw new Error("Invalid merge cell");
+		throw new Error("Sheet: " + sheetName + " Invalid merge cell: " + JSON.stringify(payload));
 	}
 
 	merges.splice(i, 1);

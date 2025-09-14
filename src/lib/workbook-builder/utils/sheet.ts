@@ -92,19 +92,13 @@ export function createSheet(
 		removeMerge: (mergeCell: MergeCell & { sheetName: string }) => boolean;
 		addOrGetStyle: (style: CellStyle, sheetName: string) => number;
 		addSharedString: (str: string, sheetName: string) => number;
-		cleanupUnused: boolean; // новая опция
-		removeSharedStringRef: (strIdx: number, sheetName: string) => boolean;
-		removeStyleRef: (style: CellStyle, sheetName: string) => boolean;
 	},
 ): SheetData {
 	const {
 		addMerge,
 		addOrGetStyle,
 		addSharedString,
-		cleanupUnused,
 		removeMerge,
-		removeSharedStringRef,
-		removeStyleRef,
 	} = fn;
 	const rows = new Map<number, RowData>();
 
@@ -148,21 +142,6 @@ export function createSheet(
 			// if is Date
 			if (cell.value instanceof Date) {
 				cell.value = dateToExcelSerial(cell.value);
-			}
-
-			if (cleanupUnused) {
-				const oldCell = rows.get(rowIndex)?.cells.get(letterColumn);
-
-				// Обработка ситуации если до этого была в ячейке shared string
-				if (oldCell) {
-					if (oldCell?.type === "s" && typeof oldCell.value === "number") {
-						removeSharedStringRef(oldCell.value, name);
-					}
-
-					if (oldCell?.style && typeof oldCell.style.index === "number") {
-						removeStyleRef(oldCell.style, name);
-					}
-				}
 			}
 
 			if (cell.isFormula) {
@@ -227,21 +206,6 @@ export function createSheet(
 
 			if (!isValidColumn(letterColumn)) {
 				throw new Error(`Invalid column string: "${letterColumn}"`);
-			}
-
-			if (cleanupUnused) {
-				const oldCell = rows.get(rowIndex)?.cells.get(letterColumn);
-
-				// Обработка ситуации если до этого была в ячейке shared string
-				if (oldCell) {
-					if (oldCell?.type === "s" && typeof oldCell.value === "number") {
-						removeSharedStringRef(oldCell.value, name);
-					}
-
-					if (oldCell?.style && typeof oldCell.style.index === "number") {
-						removeStyleRef(oldCell.style, name);
-					}
-				}
 			}
 
 			return rows.get(rowIndex)?.cells.delete(letterColumn) ?? false;

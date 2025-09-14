@@ -1,4 +1,5 @@
 import type { Writable } from "node:stream";
+import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -19,9 +20,6 @@ import { columnIndexToLetter } from "../template/utils/column-index-to-letter.js
  * and provides methods to save to file or stream.
  */
 export class WorkbookBuilder {
-	/** Whether to cleanup unused references while mutating the workbook. */
-	#cleanupUnused: boolean;
-
 	/** In-memory representation of workbook files to be zipped. */
 	#files: Utils.ExcelFiles;
 
@@ -30,7 +28,7 @@ export class WorkbookBuilder {
 
 	/** Shared strings storage used by cells of type "s". */
 	#sharedStrings: string[] = [];
-	/** Map for O(1) lookup of shared string indices (key = string, value = index). */
+	/** Map for lookup of shared string indices (key = string, value = index). */
 	#sharedStringMap: Map<string, number> = new Map();
 
 	/** Workbook style collections. */
@@ -48,13 +46,13 @@ export class WorkbookBuilder {
 	/**
 	 * Creates a new workbook with a default sheet and initial style collections.
 	 *
-	 * @param options.cleanupUnused - If true, remove unused references when deleting or modifying sheets
 	 * @param options.defaultSheetName - The name for the initial sheet
 	 */
-	constructor({ cleanupUnused = false, defaultSheetName = Default.sheetName() } = {}) {
-		this.#cleanupUnused = cleanupUnused;
+	constructor({
+		defaultSheetName = Default.sheetName(),
+	} = {}) {
 
-		this.#files = Utils.initializeFiles(Default.sheetName());
+		this.#files = Utils.initializeFiles(defaultSheetName);
 
 		// Initialize base style collections
 		this.#borders = [Default.border()];
@@ -67,10 +65,7 @@ export class WorkbookBuilder {
 			addMerge: this.#addMerge.bind(this),
 			addOrGetStyle: this.#addOrGetStyle.bind(this),
 			addSharedString: this.#addSharedString.bind(this),
-			cleanupUnused: this.#cleanupUnused,
 			removeMerge: this.#removeMerge.bind(this),
-			removeSharedStringRef: this.#removeSharedStringRef.bind(this),
-			removeStyleRef: this.#removeStyleRef.bind(this),
 		});
 
 		this.#sheets.set(Default.sheetName(), sheet);
@@ -138,16 +133,6 @@ export class WorkbookBuilder {
 		return SharedStringRef.add.bind(this)({ sheetName, str });
 	}
 
-	/** Removes a reference to a shared string from the specified sheet, if present. */
-	#removeSharedStringRef(strIdx: number, sheetName: string): boolean {
-		return SharedStringRef.remove.bind(this)({ sheetName, strIdx });
-	}
-
-	/** Removes all shared string references for a sheet (used during cleanup). */
-	#removeSheetSharedStrings(sheetName: string) {
-		return SharedStringRef.removeAllFromSheet.bind(this)({ sheetName });
-	}
-
 	/** -------------- */
 
 	/** Style refs */
@@ -156,16 +141,6 @@ export class WorkbookBuilder {
 	#addOrGetStyle(style: Utils.CellStyle) {
 		return StyleRef.addOrGet.bind(this)({ style });
 	};
-
-	/** Removes a style reference if no cells depend on it. */
-	#removeStyleRef(style: Utils.CellStyle): boolean {
-		return StyleRef.remove.bind(this)({ style });
-	}
-
-	/** Removes all style references for a sheet (used during cleanup). */
-	#removeSheetStyleRefs(sheetName: string): boolean {
-		return StyleRef.removeAllFromSheet.bind(this)({ sheetName });
-	}
 
 	/** ---------- */
 
@@ -243,10 +218,7 @@ export class WorkbookBuilder {
 			addMerge: this.#addMerge.bind(this),
 			addOrGetStyle: this.#addOrGetStyle.bind(this),
 			addSharedString: this.#addSharedString.bind(this),
-			cleanupUnused: this.#cleanupUnused,
 			removeMerge: this.#removeMerge.bind(this),
-			removeSharedStringRef: this.#removeSharedStringRef.bind(this),
-			removeStyleRef: this.#removeStyleRef.bind(this),
 		});
 
 		this.#sheets.set(sheetName, sheet);
@@ -278,20 +250,11 @@ export class WorkbookBuilder {
 	 * @param sheetName - Sheet name to remove
 	 * @returns True if the sheet existed and was removed
 	 */
-	removeSheet(sheetName: string): boolean {
+	removeSheet(sheetName: string): true {
 		const sheet = this.#sheets.get(sheetName);
 
 		if (!sheet) {
-			// Sheet with this name not found
-			return false;
-		}
-
-		if (this.#cleanupUnused) {
-			// Remove its shared string references
-			this.#removeSheetSharedStrings(sheetName);
-
-			// Remove its style references
-			this.#removeSheetStyleRefs(sheetName);
+			throw new Error("Sheet not found: " + sheetName);
 		}
 
 		// Remove its merges
@@ -428,18 +391,30 @@ export class WorkbookBuilder {
 	 * to the output stream, avoiding loading the entire file into memory.
 	 *
 	 * @param output - Writable stream to receive the Excel file
-	 * @param dest - Optional existing directory to use instead of a system temp directory
+	 * @param options.destination - Optional existing directory to use instead of a system temp directory
+	 * @param options.cleanup - Optional flag to cleanup the temporary directory after saving (default: true)
 	 * @returns Promise that resolves when the file has been fully written
 	 */
-	async saveToStream(output: Writable, dest?: string): Promise<void> {
-		if (dest) {
-			await fs.rm(dest, { force: true, recursive: true });
+	async saveToStream(
+		output: Writable,
+		options?: {
+			destination?: string;
+			cleanup?: boolean;
+		},
+	): Promise<void> {
+		const { cleanup = true, destination } = options ?? {};
+
+		// Determine a temp directory to assemble ZIP contents
+		let tempDir = "";
+		if (destination) {
+			// Create a random subdirectory inside provided destination
+			tempDir = path.join(destination, crypto.randomUUID());
+
+			await fs.mkdir(tempDir, { recursive: true });
+		} else {
+			// Create a temp directory in OS temp
+			tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "excel-toolbox-", crypto.randomUUID()));
 		}
-
-		const destination = dest ?? path.join(os.tmpdir(), "excel-toolbox-");
-
-		// Create temporary directory
-		const tempDir = dest ? destination : await fs.mkdtemp(destination);
 
 		let index = 0;
 
@@ -448,16 +423,11 @@ export class WorkbookBuilder {
 		// Write "xl/worksheets/sheet*.xml"
 		for (const sheet of this.#sheets.values()) {
 			const merges = this.#mergeCells.get(sheet.name) || [];
-			// const preparedMerges = merges.map(
-			// 	merge => `${columnIndexToLetter(merge.startCol)}${merge.startRow}:${columnIndexToLetter(merge.endCol)}${merge.endRow}`,
-			// );
-
-			// const xml = Utils.buildWorksheetXml(sheet.rows, preparedMerges);
-
 			const filePath = `xl/worksheets/sheet${++index}.xml`;
+
 			usedFileKeys.push(filePath);
 
-			const fullPath = path.join(destination, ...filePath.split("/"));
+			const fullPath = path.join(tempDir, ...filePath.split("/"));
 
 			await Utils.writeWorksheetXml(fullPath, sheet.rows, merges);
 
@@ -468,7 +438,7 @@ export class WorkbookBuilder {
 		if (this.#sharedStrings.length) {
 			usedFileKeys.push(FILE_PATHS.SHARED_STRINGS);
 
-			const fullPath = path.join(destination, ...FILE_PATHS.SHARED_STRINGS.split("/"));
+			const fullPath = path.join(tempDir, ...FILE_PATHS.SHARED_STRINGS.split("/"));
 
 			await Utils.writeSharedStringsXml(fullPath, this.#sharedStrings);
 		}
@@ -477,7 +447,7 @@ export class WorkbookBuilder {
 		{
 			usedFileKeys.push(FILE_PATHS.STYLES);
 
-			const fullPath = path.join(destination, ...FILE_PATHS.STYLES.split("/"));
+			const fullPath = path.join(tempDir, ...FILE_PATHS.STYLES.split("/"));
 
 			await Utils.writeStylesXml(fullPath, {
 				borders: this.#borders,
@@ -510,7 +480,9 @@ export class WorkbookBuilder {
 			await Zip.createWithStream(fileKeys, tempDir, output);
 		} finally {
 			// Clean up temporary files
-			await fs.rm(tempDir, { force: true, recursive: true });
+			if (cleanup) {
+				await fs.rm(tempDir, { force: true, recursive: true });
+			}
 		}
 	}
 }

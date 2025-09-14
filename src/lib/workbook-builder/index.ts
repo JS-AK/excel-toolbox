@@ -1,2 +1,2 @@
 export * from "./utils/constants.js";
-export { WorkbookBuilder } from "./workbook-builder.js";
+export * from "./workbook-builder.js";
