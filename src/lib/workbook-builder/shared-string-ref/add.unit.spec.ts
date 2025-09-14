@@ -18,7 +18,6 @@ describe("add (optimized with Map)", () => {
 		expect(wb.getInfo().sharedStrings).toHaveLength(1);
 		expect(wb.getInfo().sharedStrings[0]).toBe("Hello World");
 		expect(wb.getInfo().sharedStringMap.get("Hello World")).toBe(0);
-		// expect(wb.getInfo().sharedStringRefs.get("Hello World")?.has("Sheet1")).toBe(true);
 	});
 
 	it("should return existing index for duplicate string", () => {
@@ -28,8 +27,6 @@ describe("add (optimized with Map)", () => {
 		expect(idx1).toBe(idx2);
 		expect(wb.getInfo().sharedStrings).toHaveLength(1);
 		expect(wb.getInfo().sharedStringMap.get("Hello World")).toBe(0);
-		// expect(wb.getInfo().sharedStringRefs.get("Hello World")?.has("Sheet1")).toBe(true);
-		// expect(wb.getInfo().sharedStringRefs.get("Hello World")?.has("Sheet2")).toBe(true);
 	});
 
 	it("should handle multiple different strings", () => {

@@ -11,16 +11,10 @@ import { XML_DECLARATION, XML_NAMESPACES } from "./constants.js";
  * @param strings - Массив уникальных строк, используемых в книге
  */
 export async function writeSharedStringsXml(destination: string, strings: string[] = []): Promise<void> {
-	checkRam("writeSharedStringsXml 1");
-
 	// create with folder
 	await fsPromises.mkdir(path.dirname(destination), { recursive: true });
 
-	checkRam("writeSharedStringsXml 2");
-
 	const stream = fs.createWriteStream(destination, { encoding: "utf-8" });
-
-	checkRam("writeSharedStringsXml 3");
 
 	try {
 		const escapeXml = (str: string) =>
@@ -35,8 +29,6 @@ export async function writeSharedStringsXml(destination: string, strings: string
 		stream.write(XML_DECLARATION + "\n");
 		stream.write(`<sst xmlns="${XML_NAMESPACES.SPREADSHEET_ML}" count="${strings.length}" uniqueCount="${strings.length}">\n`);
 
-		checkRam("writeWorksheetXml 4");
-
 		// Основные строки
 		for (const s of strings) {
 			const preserve = /^\s|\s$/.test(s) ? " xml:space=\"preserve\"" : "";
@@ -48,8 +40,6 @@ export async function writeSharedStringsXml(destination: string, strings: string
 			}
 		}
 
-		checkRam("writeWorksheetXml 5");
-
 		// Закрывающий тег
 		stream.write("</sst>");
 	} finally {
@@ -60,11 +50,4 @@ export async function writeSharedStringsXml(destination: string, strings: string
 		stream.on("error", reject);
 		stream.on("finish", resolve);
 	});
-}
-
-function checkRam(message: string) {
-	const used = process.memoryUsage().heapTotal / 1024 / 1024;
-	const timeStamp = new Date().toISOString().slice(0, 22);
-
-	console.log(timeStamp, message, `Used: ${used} MB`);
 }
