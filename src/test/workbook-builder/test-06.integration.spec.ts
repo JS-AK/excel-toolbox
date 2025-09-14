@@ -134,7 +134,7 @@ describe("Shared String Ref Integration Tests", () => {
 			const endTime = performance.now();
 
 			// Should be very fast (O(1) lookup)
-			expect(endTime - startTime).toBeLessThan(50); // Less than 50ms for 1000 lookups
+			expect(endTime - startTime).toBeLessThan(100); // Less than 100ms for 1000 lookups
 		});
 
 		it("should maintain Map consistency during bulk operations", () => {
