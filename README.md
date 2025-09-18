@@ -86,7 +86,7 @@ Programmatically create `.xlsx` files from scratch with streaming-friendly write
 
 ```ts
 // ESM (experimental deep import; subject to change)
-import { WorkbookBuilder } from "@js-ak/excel-toolbox/esm/lib/workbook-builder/workbook-builder.js";
+import { WorkbookBuilder } from "@js-ak/excel-toolbox";
 
 // Create a workbook and work with sheets
 const wb = new WorkbookBuilder(); // default sheet: "Sheet1"

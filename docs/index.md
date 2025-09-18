@@ -17,6 +17,7 @@ npm install @js-ak/excel-toolbox
 - 🧩 Merge sheets from multiple `.xlsx` files
 - 🧼 Remove sheets by name or index
 - 💎 Preserve styles, merges, and shared strings
+- 🏗️ Build `.xlsx` from scratch with an experimental `WorkbookBuilder`
 
 ## Template API
 
