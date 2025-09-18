@@ -3,6 +3,7 @@
   - [Template Fs](template-fs)
   - [Template Memory](template-memory)
   - [Merge sheets to base file](merge-sheets-to-base-file)
+  - [Workbook Builder](workbook-builder)
 - [Changelog](changelog.md)
 - **Links**
 - [![Github](assets/img/github.svg)Github](https://github.com/JS-AK/excel-toolbox)
